@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-brand-100: #ffe4e6;
+  --color-brand-300: #fda4af;
+  --color-brand-500: #ff3366;
+  --color-brand-700: #e11d48;
+  --color-brand-900: #881337;
+
+  /* HealthThread National Digital Health Palette */
+  --color-ht-navy: #0e3c5d;
+  --color-ht-navy-dark: #0a2d48;
+  --color-ht-navy-light: #164e75;
+  --color-ht-orange: #ea580c;
+  --color-ht-green: #16a34a;
+
+  --color-neutral-dark: #09090b;
+  --color-background: #f8fafc;
+  --color-foreground: #0f172a;
+  
+  /* Vibrant Neon Red Theme for AI features */
+  --color-neon-red: #ff3366;
+  --color-neon-red-bright: #ff4d7d;
+  --color-neon-red-dim: #c71f49;
+  --color-neon-red-glow: rgba(255, 51, 102, 0.65);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), sans-serif;
+  @apply antialiased h-full;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* HealthThread UI styles */
+.ht-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+}
+
+.ht-pill-red {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.ht-pill-green {
+  background-color: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.ht-pill-blue {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.ht-pill-slate {
+  background-color: #f1f5f9;
+  color: #334155;
+  border: 1px solid #e2e8f0;
+}

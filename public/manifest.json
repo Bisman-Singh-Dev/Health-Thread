@@ -1,0 +1,71 @@
+{
+  "name": "VitalLens - AI Health & Disease Insight Platform",
+  "short_name": "VitalLens",
+  "description": "AI-powered diagnostic scans, real-time vital tracking, and personalized clinical health insights.",
+  "start_url": "/",
+  "id": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui",
+    "browser"
+  ],
+  "background_color": "#050507",
+  "theme_color": "#ff3366",
+  "orientation": "any",
+  "scope": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "AI Diagnostics",
+      "short_name": "Diagnostics",
+      "description": "Launch AI vital and symptom scan",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Voice Alarms",
+      "short_name": "Alarms",
+      "description": "Manage medicine and health reminders",
+      "url": "/dashboard?tab=voice-alarms",
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "categories": [
+    "health",
+    "medical",
+    "lifestyle"
+  ],
+  "prefer_related_applications": false
+}
