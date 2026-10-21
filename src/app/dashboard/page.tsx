@@ -25,7 +25,9 @@ import {
   QrCode,
   Camera,
   Activity,
-  CheckCircle2
+  CheckCircle2,
+  PanelLeftClose,
+  PanelLeftOpen
 } from "lucide-react";
 import { HealthThreadLogo, BrandAccentBar } from "@/components/HealthThreadLogo";
 import DashboardTab from "./tabs/DashboardTab";
@@ -39,6 +41,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<string>("dashboard");
   const [viewMode, setViewMode] = useState<"tabs" | "grid">("tabs");
+  const [hideVerticalTabs, setHideVerticalTabs] = useState(false);
   const [user, setUser] = useState<VaultUser | null>(() => {
     if (typeof window !== "undefined") {
       return getActiveUser();
@@ -102,17 +105,18 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] text-slate-900 flex flex-col select-none">
+    <div className={`min-h-screen ${activeTab === "beacon" && viewMode === "tabs" ? "bg-white" : "bg-[#f8fafc]"} text-slate-900 flex flex-col select-none`}>
       
       {/* 1. BRAND ACCENT GRADIENT BAR */}
       <BrandAccentBar />
 
       <div className="flex-1 flex overflow-hidden">
         
-        {/* 2. SIDEBAR NAVIGATION */}
+        {/* 2. SIDEBAR NAVIGATION (Can be collapsed / hidden) */}
         <aside className={`
-          fixed inset-y-0 left-0 z-40 w-64 bg-[#0b192c] text-white flex flex-col transition-transform duration-200 ease-in-out md:translate-x-0 md:static shrink-0 shadow-xl
-          ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
+          fixed inset-y-0 left-0 z-40 bg-[#0b192c] text-white flex flex-col transition-all duration-300 ease-in-out md:static shrink-0 shadow-xl overflow-hidden
+          ${hideVerticalTabs ? "md:w-0 md:opacity-0 md:pointer-events-none -translate-x-full" : "w-64 opacity-100"}
+          ${mobileMenuOpen ? "translate-x-0 w-64" : (!hideVerticalTabs ? "md:translate-x-0" : "-translate-x-full")}
         `}>
           
           {/* Logo Area */}
@@ -125,6 +129,7 @@ export default function DashboardPage() {
               <X className="w-5 h-5" />
             </button>
           </div>
+
 
           {/* Navigation Links */}
           <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 text-xs font-semibold">
@@ -254,7 +259,7 @@ export default function DashboardPage() {
         <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
           
           {/* Top Bar Header */}
-          <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-slate-200/90 h-16 px-4 sm:px-8 flex items-center justify-between">
+          <header className={`sticky top-0 z-30 ${activeTab === "beacon" && viewMode === "tabs" ? "bg-white border-slate-100" : "bg-white/85 backdrop-blur-md border-slate-200/90"} border-b h-16 px-4 sm:px-8 flex items-center justify-between`}>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setMobileMenuOpen(true)}
@@ -262,10 +267,32 @@ export default function DashboardPage() {
               >
                 <Menu className="w-5 h-5" />
               </button>
+
+              {/* Toggle Vertical Sidebar Tabs button */}
+              <button
+                type="button"
+                onClick={() => setHideVerticalTabs(!hideVerticalTabs)}
+                className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold shadow-2xs transition-all active:scale-95"
+                title={hideVerticalTabs ? "Show Vertical Tabs" : "Hide Vertical Tabs"}
+              >
+                {hideVerticalTabs ? (
+                  <>
+                    <PanelLeftOpen className="w-4 h-4 text-cyan-600" />
+                    <span>Show Vertical Tabs</span>
+                  </>
+                ) : (
+                  <>
+                    <PanelLeftClose className="w-4 h-4 text-slate-500" />
+                    <span>Hide Vertical Tabs</span>
+                  </>
+                )}
+              </button>
+
               <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
                 {getPageTitle()}
               </h2>
             </div>
+
 
             <div className="flex items-center gap-2.5 sm:gap-4">
               
@@ -310,7 +337,11 @@ export default function DashboardPage() {
           </header>
 
           {/* Active Tab Body or Grid All Tabs View */}
-          <main className="p-4 sm:p-8 max-w-6xl w-full mx-auto">
+          <main className={
+            activeTab === "beacon" && viewMode === "tabs"
+              ? "p-0 max-w-none w-full bg-white flex-1 flex flex-col"
+              : "p-4 sm:p-8 max-w-6xl w-full mx-auto"
+          }>
             {viewMode === "grid" ? (
               
               /* GRID ALL TABS OVERVIEW */

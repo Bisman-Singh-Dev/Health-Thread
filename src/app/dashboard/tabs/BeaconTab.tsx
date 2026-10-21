@@ -5,20 +5,15 @@ import {
   X, 
   ThumbsUp, 
   Camera, 
-  History, 
-  Bell, 
-  User, 
-  ShieldAlert, 
-  Sparkles, 
   Mic, 
-  MicOff, 
   Volume2, 
-  Play, 
   AlertTriangle,
   RotateCcw,
-  Check,
   PhoneCall,
-  Activity
+  Sparkles,
+  CheckCircle2,
+  Square,
+  ArrowRight
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GestureRecognizer, FilesetResolver } from "@mediapipe/tasks-vision";
@@ -33,10 +28,14 @@ export default function BeaconTab({
   setActiveTab?: (tab: string) => void;
 }) {
   const [lumiState, setLumiState] = useState<LumiState>("awake");
-  const [statusMessage, setStatusMessage] = useState("Lumi Beacon Station Online • Listening for commands");
+  const [statusMessage, setStatusMessage] = useState("Lumi Beacon Online • Say \"Wake Up Lumi\" or click to talk");
   
-  // Dialog transcripts
+  // Dialog transcripts & symptom accumulation
   const [transcript, setTranscript] = useState<string>("");
+  const [accumulatedSpeech, setAccumulatedSpeech] = useState<string>("");
+  const [isCollectingExplanation, setIsCollectingExplanation] = useState<boolean>(false);
+  const [silenceCountdown, setSilenceCountdown] = useState<number | null>(null);
+
   const [latestDiagnosis, setLatestDiagnosis] = useState<{
     condition: string;
     steps: string[];
@@ -48,8 +47,16 @@ export default function BeaconTab({
   // Audio / Speech State
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [lastSpokenReply, setLastSpokenReply] = useState<string>("");
+  
   const recognitionRef = useRef<any>(null);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const lumiStateRef = useRef<LumiState>(lumiState);
+  const isSpeakingRef = useRef<boolean>(false);
+  const isCollectingRef = useRef<boolean>(false);
+  const accumulatedSpeechRef = useRef<string>("");
+  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Camera State
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -66,6 +73,23 @@ export default function BeaconTab({
   // MediaPipe Gesture Recognizer
   const [gestureRecognizer, setGestureRecognizer] = useState<GestureRecognizer | null>(null);
 
+  useEffect(() => {
+    lumiStateRef.current = lumiState;
+  }, [lumiState]);
+
+  useEffect(() => {
+    isSpeakingRef.current = isSpeaking;
+  }, [isSpeaking]);
+
+  useEffect(() => {
+    isCollectingRef.current = isCollectingExplanation;
+  }, [isCollectingExplanation]);
+
+  useEffect(() => {
+    accumulatedSpeechRef.current = accumulatedSpeech;
+  }, [accumulatedSpeech]);
+
+  // Initialize MediaPipe Gesture Recognizer
   useEffect(() => {
     let recognizerInstance: GestureRecognizer | null = null;
     const initGesture = async () => {
@@ -88,21 +112,27 @@ export default function BeaconTab({
     initGesture();
   }, []);
 
-  const [inputText, setInputText] = useState("");
-  const [lastSpokenReply, setLastSpokenReply] = useState<string>("");
-  const lumiStateRef = useRef<LumiState>(lumiState);
-  const isSpeakingRef = useRef<boolean>(false);
-
-  useEffect(() => {
-    lumiStateRef.current = lumiState;
-  }, [lumiState]);
-
-  useEffect(() => {
-    isSpeakingRef.current = isSpeaking;
-  }, [isSpeaking]);
+  // Interruption (Barge-in): Immediately silence Lumi if user speaks or clicks
+  const interruptLumi = () => {
+    if (audioPlayerRef.current) {
+      try { 
+        audioPlayerRef.current.pause(); 
+        audioPlayerRef.current.currentTime = 0;
+      } catch(e) {}
+      audioPlayerRef.current = null;
+    }
+    if (typeof window !== "undefined" && "speechSynthesis" in window) {
+      try { window.speechSynthesis.cancel(); } catch(e) {}
+    }
+    setIsSpeaking(false);
+    isSpeakingRef.current = false;
+    setLumiState("listening");
+    setStatusMessage("Lumi was interrupted. Listening to you...");
+  };
 
   // Deepgram TTS Speech Output (Aura-Asteria female voice, clean without asterisks)
   const speakWithLumi = async (text: string, onEnd?: () => void) => {
+    // Stop any playing speech
     if (audioPlayerRef.current) {
       try { audioPlayerRef.current.pause(); } catch(e) {}
       audioPlayerRef.current = null;
@@ -168,7 +198,7 @@ export default function BeaconTab({
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       const u = new SpeechSynthesisUtterance(cleanSpoken);
       u.rate = 1.0;
-      u.pitch = 1.1; // Gentle female pitch
+      u.pitch = 1.1; // Friendly female pitch
       u.onend = () => {
         setIsSpeaking(false);
         isSpeakingRef.current = false;
@@ -190,13 +220,13 @@ export default function BeaconTab({
     }
   };
 
-  // Continuous Wake-Word Voice Listener (Initialized once to avoid churn)
+  // Continuous Wake-Word Voice Listener
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      setStatusMessage("Voice recognition not supported by browser. Use mic or type buttons below.");
+      setStatusMessage("Voice recognition not supported by browser. Click buttons below to interact.");
       return;
     }
 
@@ -206,34 +236,46 @@ export default function BeaconTab({
     recognition.lang = "en-US";
 
     recognition.onresult = async (event: any) => {
-      // Don't listen to Lumi speaking her own responses
-      if (isSpeakingRef.current) return;
-
       const last = event.results.length - 1;
       const currentResult = event.results[last];
       const spokenText = currentResult[0].transcript.trim();
       setTranscript(spokenText);
 
-      // Only act on finalized speech segments
-      if (!currentResult.isFinal) return;
+      // If Lumi is currently talking, user speaking triggers interruption!
+      if (isSpeakingRef.current) {
+        if (spokenText.length > 2) {
+          interruptLumi();
+        }
+        return;
+      }
 
       const lower = spokenText.toLowerCase();
 
-      // 1. "WAKE UP LUMI" / "WAKE UP" / "HEY LUMI"
+      // Check for voice wake/trigger commands first
       if (lower.includes("wake up") || lower.includes("hey lumi") || lower.includes("wake lumi")) {
         handleWakeUpLumi();
+        return;
       }
-      // 2. "CAMERA LUMI" / "OPEN CAMERA"
-      else if (lower.includes("camera lumi") || lower.includes("open camera") || lower.includes("take photo")) {
+      if (lower.includes("camera lumi") || lower.includes("open camera") || lower.includes("take photo")) {
         handleOpenCamera("standard");
+        return;
       }
-      // 3. "EMERGENCY LUMI" / "EMERGENCY"
-      else if (lower.includes("emergency lumi") || lower.includes("emergency") || lower.includes("call ambulance")) {
+      if (lower.includes("emergency lumi") || lower.includes("call ambulance") || (lower.includes("emergency") && !isCollectingRef.current)) {
         handleOpenCamera("emergency");
+        return;
       }
-      // 4. Clinical Symptom Discussion with Lumi
-      else if (lower.length > 4) {
-        handleSymptomInput(spokenText);
+
+      // If user is currently explaining symptoms:
+      if (isCollectingRef.current) {
+        // Accumulate speech
+        if (currentResult.isFinal) {
+          const updated = (accumulatedSpeechRef.current + " " + spokenText).trim();
+          setAccumulatedSpeech(updated);
+          accumulatedSpeechRef.current = updated;
+        }
+
+        // Reset silence timer: Wait for 3.0 seconds of silence before finalizing!
+        resetSilenceDebounce();
       }
     };
 
@@ -244,7 +286,6 @@ export default function BeaconTab({
     };
 
     recognition.onend = () => {
-      // Auto restart voice listener if not speaking
       if (!isSpeakingRef.current) {
         try { recognition.start(); } catch (e) {}
       }
@@ -258,24 +299,75 @@ export default function BeaconTab({
 
     return () => {
       try { recognition.stop(); } catch (e) {}
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     };
   }, []);
 
-  // Command 1: "Wake Up Lumi" Flow
-  const handleWakeUpLumi = () => {
-    setStatusMessage("Waking Up! Lumi is listening for your symptoms...");
-    setLumiState("listening");
-    speakWithLumi("Waking Up! Please explain what happened.", () => {
-      setLumiState("listening");
-      setStatusMessage("Listening... Tell Lumi what you are feeling.");
-    });
+  // Silence Debounce Timer: Wait 3.0 seconds after user stops speaking before diagnosing
+  const resetSilenceDebounce = () => {
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+
+    setSilenceCountdown(3);
+    let remaining = 3;
+    countdownIntervalRef.current = setInterval(() => {
+      remaining -= 1;
+      if (remaining >= 0) {
+        setSilenceCountdown(remaining);
+      } else {
+        if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      }
+    }, 1000);
+
+    silenceTimerRef.current = setTimeout(() => {
+      finalizeAndDiagnose();
+    }, 3200);
   };
 
+  // Finalize Explanation and Trigger Diagnosis
+  const finalizeAndDiagnose = () => {
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    setSilenceCountdown(null);
+
+    const fullSymptoms = (accumulatedSpeechRef.current || transcript).trim();
+    if (!fullSymptoms || fullSymptoms.length < 3) {
+      setStatusMessage("Lumi is listening. Please tell me what symptoms you are experiencing.");
+      return;
+    }
+
+    setIsCollectingExplanation(false);
+    isCollectingRef.current = false;
+    handleSymptomInput(fullSymptoms);
+  };
+
+  // Command 1: "Wake Up Lumi" Flow
+  const handleWakeUpLumi = () => {
+    // Clear any previous buffers
+    setAccumulatedSpeech("");
+    accumulatedSpeechRef.current = "";
+    setTranscript("");
+    if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+    if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+    setSilenceCountdown(null);
+
+    setStatusMessage("Waking Up! Lumi is ready.");
+    setLumiState("speaking");
+
+    speakWithLumi("Waking Up! Please explain what happened.", () => {
+      // AFTER Lumi finishes greeting, start listening for symptoms with full patience!
+      setLumiState("listening");
+      setIsCollectingExplanation(true);
+      isCollectingRef.current = true;
+      setStatusMessage("Listening... Explain what happened. Lumi will wait until you finish.");
+    });
+  };
 
   // Symptom Analysis via Groq LLM
   const handleSymptomInput = async (symptoms: string) => {
     setLumiState("thinking");
-    setStatusMessage("Lumi is reasoning with Groq clinical neural network...");
+    setStatusMessage("Lumi is analyzing your symptoms with Groq clinical neural network...");
 
     try {
       const formData = new FormData();
@@ -302,7 +394,7 @@ export default function BeaconTab({
       if (step1) steps.push(step1[1].trim());
       if (step2) steps.push(step2[1].trim());
       if (step3) steps.push(step3[1].trim());
-      if (steps.length === 0) steps.push("Rest, hydrate, and monitor progression.");
+      if (steps.length === 0) steps.push("Rest, hydrate, and monitor vital progression.");
 
       const specMatch = content.match(/Specialist:\s*([^\n]+)/i);
       const specialist = specMatch ? specMatch[1].trim() : "General Physician";
@@ -331,19 +423,22 @@ export default function BeaconTab({
 
     } catch (e) {
       setLumiState("awake");
-      setStatusMessage("Groq connection interrupted. Please check network.");
+      setStatusMessage("Groq connection interrupted. Please try speaking again.");
     }
   };
 
   // Command 2 & 3: Camera Activation & Thumbs-Up Capture
   const handleOpenCamera = async (mode: "standard" | "emergency") => {
+    // If speaking, interrupt first
+    interruptLumi();
+
     setCameraMode(mode);
     setIsCameraActive(true);
     setCapturedImage(null);
     setLumiState(mode === "emergency" ? "emergency" : "camera");
     setStatusMessage(
       mode === "emergency"
-        ? "Emergency Camera Mode Active. Give thumbs-up to click photo."
+        ? "Emergency Camera Active. Give thumbs-up to click photo."
         : "Camera Lumi Active. Give a thumbs-up to take your photo."
     );
 
@@ -358,7 +453,7 @@ export default function BeaconTab({
       }
     } catch (err) {
       console.error("Camera access error:", err);
-      setStatusMessage("Could not access camera. Please allow permissions.");
+      setStatusMessage("Could not access camera. Please allow permissions in browser.");
     }
   };
 
@@ -514,246 +609,222 @@ export default function BeaconTab({
     setIsCameraActive(false);
     setCapturedImage(null);
     setLumiState("awake");
-    setStatusMessage("Lumi Beacon Station Online • Listening for commands");
+    setStatusMessage("Lumi Beacon Online • Say \"Wake Up Lumi\" or click to talk");
   };
 
   return (
-    <div className="space-y-6">
+    <div className="w-full min-h-[calc(100vh-4.2rem)] bg-white flex flex-col items-center justify-between p-4 sm:p-8 select-none relative">
       
-      {/* 1. BEACON SUBHEAD BANNER */}
-      <div className="bg-gradient-to-r from-slate-900 via-[#0b132b] to-slate-900 text-white rounded-3xl p-6 sm:p-8 border border-slate-700/80 shadow-xl relative overflow-hidden">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-400/10 border border-cyan-400/20 text-cyan-300 text-[11px] font-bold uppercase mb-2">
-              <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Autonomous Medical Companion</span>
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-              Beacon <span className="text-slate-400 font-normal text-lg sm:text-xl block sm:inline">(The hardware containing Lumi powered by Groq)</span>
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl">
-              Equipped with lifelike animated eyes, real-time voice speech, and gesture-driven clinical cameras.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <button
-              onClick={handleWakeUpLumi}
-              className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-xs shadow-md transition-all active:scale-95 flex items-center gap-1.5"
-            >
-              <Mic className="w-4 h-4" />
-              <span>"Wake Up Lumi"</span>
-            </button>
-
-            <button
-              onClick={() => handleOpenCamera("standard")}
-              className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 font-bold text-xs transition-all active:scale-95 flex items-center gap-1.5"
-            >
-              <Camera className="w-4 h-4 text-cyan-300" />
-              <span>"Camera Lumi"</span>
-            </button>
-
-            <button
-              onClick={() => handleOpenCamera("emergency")}
-              className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs shadow-md transition-all active:scale-95 flex items-center gap-1.5"
-            >
-              <AlertTriangle className="w-4 h-4" />
-              <span>"Emergency Lumi"</span>
-            </button>
-          </div>
+      {/* 1. TOP MINIMALIST STATUS PILL */}
+      <div className="w-full max-w-2xl flex items-center justify-between pt-2">
+        <div className="flex items-center gap-2">
+          <span className={`w-2.5 h-2.5 rounded-full ${
+            lumiState === "emergency" ? "bg-red-500 animate-ping" : lumiState === "listening" ? "bg-emerald-500 animate-pulse" : lumiState === "speaking" ? "bg-cyan-500 animate-bounce" : "bg-sky-400"
+          }`} />
+          <span className="text-xs font-bold text-slate-800 tracking-wide uppercase">
+            {lumiState === "listening" ? "Listening..." : lumiState === "speaking" ? "Lumi Speaking..." : lumiState === "thinking" ? "Reasoning..." : "Lumi Ready"}
+          </span>
         </div>
+
+        {/* Interruption Helper if Lumi is talking */}
+        {isSpeaking && (
+          <button
+            type="button"
+            onClick={interruptLumi}
+            className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold border border-red-200 transition-colors shadow-2xs"
+          >
+            <Square className="w-3 h-3 fill-red-600 text-red-600" />
+            <span>Click or Speak to Interrupt</span>
+          </button>
+        )}
       </div>
 
-      {/* 2. THE PHOTOREALISTIC ROBOT FACE (IMAGE 2) */}
-      <div className="bg-white rounded-3xl p-6 sm:p-10 border border-slate-200 shadow-sm flex flex-col items-center justify-center relative overflow-hidden">
-        
-        {/* State Indicator */}
-        <div className="w-full flex items-center justify-between pb-4 border-b border-slate-100 mb-6 text-xs text-slate-500">
-          <div className="flex items-center gap-2">
-            <span className={`w-2.5 h-2.5 rounded-full ${
-              lumiState === "emergency" ? "bg-red-500 animate-ping" : lumiState === "listening" ? "bg-emerald-500 animate-pulse" : lumiState === "speaking" ? "bg-cyan-500 animate-bounce" : "bg-sky-400"
-            }`} />
-            <span className="font-bold text-slate-800">State: {lumiState.toUpperCase()}</span>
-          </div>
-
-          <span className="font-mono text-[11px] text-slate-400">Groq LLM 120B • Deepgram Aura</span>
-        </div>
-
-        {/* The Exact Robot Face from Image 2 */}
+      {/* 2. CENTER: THE PHOTOREALISTIC ROBOT FACE WITH HUGE EYES */}
+      <div className="flex-1 flex flex-col items-center justify-center my-4 w-full">
         <LumiBeaconFace
           state={lumiState}
           size="xl"
           statusText={statusMessage}
-          onClick={handleWakeUpLumi}
-        />
-
-        {/* Live Spoken Transcript & Feedback Display */}
-        {(transcript || lastSpokenReply) && (
-          <div className="w-full max-w-xl mt-6 p-4 rounded-2xl bg-slate-50 border border-slate-200 shadow-inner space-y-2">
-            {transcript && (
-              <div className="flex items-start gap-2 text-xs">
-                <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 font-bold text-[10px] uppercase">
-                  You Spoke
-                </span>
-                <span className="text-slate-800 font-medium italic">"{transcript}"</span>
-              </div>
-            )}
-            {lastSpokenReply && (
-              <div className="flex items-start justify-between gap-3 text-xs pt-2 border-t border-slate-200">
-                <div className="flex items-start gap-2">
-                  <span className="px-2 py-0.5 rounded-md bg-cyan-100 text-cyan-800 font-bold text-[10px] uppercase">
-                    Lumi Response
-                  </span>
-                  <span className="text-slate-700 line-clamp-2">{lastSpokenReply}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => speakWithLumi(lastSpokenReply)}
-                  className="px-2.5 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-[11px] font-bold shrink-0 flex items-center gap-1 shadow-xs transition-colors"
-                  title="Replay Voice Feedback"
-                >
-                  <Volume2 className="w-3.5 h-3.5" />
-                  <span>Replay</span>
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Direct Symptom Input Bar (Type or Speak) */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (inputText.trim()) {
-              handleSymptomInput(inputText);
-              setInputText("");
+          onClick={() => {
+            if (isSpeaking) {
+              interruptLumi();
+            } else {
+              handleWakeUpLumi();
             }
           }}
-          className="w-full max-w-xl mt-4 flex items-center gap-2"
-        >
-          <div className="relative flex-1">
-            <input
-              type="text"
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder="Tell or type symptoms here (e.g. fever, headache, back pain)..."
-              className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-300 focus:border-[#00c4d9] focus:ring-2 focus:ring-[#00c4d9]/20 text-xs sm:text-sm text-slate-800 outline-none transition-all shadow-xs"
-            />
-            {inputText && (
+        />
+
+        {/* Live Speech Feedback & Silence Timer Indicator */}
+        {isCollectingExplanation && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-6 max-w-lg w-full p-4 rounded-2xl bg-cyan-50/70 border border-cyan-200 text-center shadow-xs"
+          >
+            <div className="flex items-center justify-center gap-2 mb-1.5">
+              <span className="w-2 h-2 rounded-full bg-cyan-600 animate-ping" />
+              <span className="text-xs font-extrabold text-[#0077b6] uppercase tracking-wider">
+                Lumi Is Listening • Speak At Your Own Pace
+              </span>
+            </div>
+            
+            <p className="text-xs text-slate-700 italic min-h-[1.5rem]">
+              {accumulatedSpeech || transcript ? `"${accumulatedSpeech || transcript}"` : "Explain what happened to your body or symptoms..."}
+            </p>
+
+            <div className="mt-3 flex items-center justify-center gap-3">
+              {silenceCountdown !== null && (
+                <span className="text-[11px] font-mono text-cyan-800 bg-white px-2.5 py-0.5 rounded-full border border-cyan-200 shadow-2xs">
+                  Auto-analyzing in {silenceCountdown}s of silence...
+                </span>
+              )}
+              
               <button
                 type="button"
-                onClick={() => setInputText("")}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                onClick={finalizeAndDiagnose}
+                className="px-3.5 py-1 rounded-xl bg-gradient-to-r from-[#00b4d8] to-[#0077b6] text-white text-xs font-bold shadow-xs hover:opacity-95 transition-all flex items-center gap-1"
               >
-                <X className="w-3.5 h-3.5" />
+                <span>Diagnose Now</span>
+                <ArrowRight className="w-3.5 h-3.5" />
               </button>
-            )}
-          </div>
+            </div>
+          </motion.div>
+        )}
+      </div>
 
-          <button
-            type="submit"
-            disabled={!inputText.trim() || lumiState === "thinking"}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#00b4d8] to-[#0077b6] hover:opacity-95 text-white font-bold text-xs tracking-wide shadow-xs disabled:opacity-50 transition-all flex items-center gap-1.5 shrink-0"
-          >
-            {lumiState === "thinking" ? (
-              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <>
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Ask Lumi</span>
-              </>
-            )}
-          </button>
-        </form>
-
-        {/* Action Quick Prompts */}
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-xs">
+      {/* 3. BOTTOM FLOATING ACTION CONTROLS */}
+      <div className="w-full max-w-xl pb-2 flex flex-col items-center gap-3">
+        
+        {/* The 3 Core Voice Triggers */}
+        <div className="flex items-center justify-center gap-2.5 sm:gap-4 flex-wrap">
           <button
             type="button"
             onClick={handleWakeUpLumi}
-            className="px-3 py-1.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 text-[#0077b6] border border-cyan-200 font-bold transition-colors flex items-center gap-1"
+            className="px-4 sm:px-5 py-2.5 rounded-2xl bg-gradient-to-r from-[#00b4d8] to-[#0077b6] hover:opacity-95 text-white font-extrabold text-xs sm:text-sm shadow-md transition-all active:scale-95 flex items-center gap-2"
           >
-            <Mic className="w-3.5 h-3.5" />
+            <Mic className="w-4 h-4" />
             <span>"Wake Up Lumi"</span>
           </button>
+
           <button
             type="button"
-            onClick={() => handleSymptomInput("I have a high fever, sore throat, and severe fatigue since yesterday.")}
-            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
+            onClick={() => handleOpenCamera("standard")}
+            className="px-4 sm:px-5 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs sm:text-sm shadow-md transition-all active:scale-95 flex items-center gap-2"
           >
-            "Fever & Sore Throat"
+            <Camera className="w-4 h-4 text-cyan-300" />
+            <span>"Camera Lumi"</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleOpenCamera("emergency")}
+            className="px-4 sm:px-5 py-2.5 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs sm:text-sm shadow-md transition-all active:scale-95 flex items-center gap-2"
+          >
+            <AlertTriangle className="w-4 h-4" />
+            <span>"Emergency Lumi"</span>
+          </button>
+        </div>
+
+        {/* Quick Symptoms Prompt Chips */}
+        <div className="flex flex-wrap items-center justify-center gap-2 text-xs pt-1">
+          <button
+            type="button"
+            onClick={() => handleSymptomInput("I have a high fever, sore throat, and severe fatigue.")}
+            className="px-3 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
+          >
+            Fever & Sore Throat
           </button>
           <button
             type="button"
-            onClick={() => handleSymptomInput("My knee is swollen and aching after a twisting fall.")}
-            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
+            onClick={() => handleSymptomInput("Swollen knee joint with pain after a fall.")}
+            className="px-3 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
           >
-            "Swollen Knee Sprain"
+            Swollen Knee
           </button>
           <button
             type="button"
-            onClick={() => handleSymptomInput("Persistent dry cough and chest tightness.")}
-            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
+            onClick={() => handleSymptomInput("Persistent dry cough, mild wheezing, and chest tightness.")}
+            className="px-3 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
           >
-            "Chest Tightness & Cough"
+            Chest Tightness
           </button>
         </div>
       </div>
 
-
-      {/* 3. LATEST DIAGNOSIS CARD */}
-      {latestDiagnosis && (
-        <div className="bg-gradient-to-r from-cyan-50 to-sky-50 rounded-3xl p-6 sm:p-8 border border-cyan-200 shadow-sm animate-in fade-in">
-          <div className="flex items-start justify-between pb-4 border-b border-cyan-200/60">
-            <div>
-              <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#0077b6] bg-cyan-100/80 px-2.5 py-0.5 rounded-full border border-cyan-300">
-                Lumi Groq Diagnosis Generated
-              </span>
-              <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">
-                {latestDiagnosis.condition}
-              </h3>
-            </div>
-            {latestDiagnosis.photoUrl && (
-              <div className="w-16 h-16 rounded-xl overflow-hidden border border-slate-300 shadow-xs shrink-0">
-                <img src={latestDiagnosis.photoUrl} alt="Diagnosis Scan" className="w-full h-full object-cover" />
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-5">
-            <div>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
-                Multi-Step Treatment Protocol:
-              </h4>
-              <ul className="space-y-1.5 text-xs text-slate-700">
-                {latestDiagnosis.steps.map((st, i) => (
-                  <li key={i} className="flex items-start gap-2">
-                    <span className="w-4 h-4 rounded-full bg-cyan-200 text-cyan-900 font-bold flex items-center justify-center shrink-0 text-[10px] mt-0.5">{i+1}</span>
-                    <span>{st}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="space-y-3">
-              <div className="p-3.5 rounded-xl bg-white border border-cyan-200 text-xs">
-                <span className="font-bold text-slate-700 block text-[11px] uppercase">Recommended Specialist</span>
-                <span className="font-bold text-[#0077b6] text-sm">{latestDiagnosis.specialist}</span>
+      {/* 4. DIAGNOSIS POPUP DRAWER */}
+      <AnimatePresence>
+        {latestDiagnosis && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-4 left-4 right-4 max-w-3xl mx-auto z-40 bg-white/95 backdrop-blur-xl rounded-3xl p-6 border border-cyan-200 shadow-2xl"
+          >
+            <div className="flex items-start justify-between pb-3 border-b border-slate-100">
+              <div>
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#0077b6] bg-cyan-100 px-2.5 py-0.5 rounded-full">
+                  Lumi Groq Diagnosis
+                </span>
+                <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 mt-1">
+                  {latestDiagnosis.condition}
+                </h3>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-xs flex items-center justify-between">
-                <div>
-                  <span className="font-bold text-red-700 block text-[11px] uppercase">Emergency Ambulance</span>
-                  <span className="font-bold text-red-900">{latestDiagnosis.emergencyContact}</span>
+              <div className="flex items-center gap-2">
+                {lastSpokenReply && (
+                  <button
+                    type="button"
+                    onClick={() => speakWithLumi(lastSpokenReply)}
+                    className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition-colors"
+                  >
+                    <Volume2 className="w-3.5 h-3.5" />
+                    <span>Replay Voice</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setLatestDiagnosis(null)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-3 text-xs">
+              <div>
+                <h4 className="font-bold text-slate-500 uppercase tracking-wider text-[11px] mb-1.5">
+                  Treatment Steps:
+                </h4>
+                <ul className="space-y-1 text-slate-700">
+                  {latestDiagnosis.steps.map((st, i) => (
+                    <li key={i} className="flex items-start gap-1.5">
+                      <span className="w-4 h-4 rounded-full bg-cyan-100 text-cyan-900 font-bold flex items-center justify-center shrink-0 text-[10px] mt-0.5">{i+1}</span>
+                      <span>{st}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="space-y-2">
+                <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Recommended Specialist</span>
+                  <span className="font-bold text-[#0077b6] text-xs">{latestDiagnosis.specialist}</span>
                 </div>
-                <PhoneCall className="w-5 h-5 text-red-600" />
+                <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] text-red-600 uppercase font-bold block">Ambulance Contact</span>
+                    <span className="font-bold text-red-900 text-xs">{latestDiagnosis.emergencyContact}</span>
+                  </div>
+                  <PhoneCall className="w-4 h-4 text-red-600" />
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* 4. CAMERA MODAL WITH THUMBS UP DETECTION */}
+      {/* 5. CAMERA MODAL WITH THUMBS UP DETECTION */}
       {isCameraActive && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-700 rounded-3xl max-w-xl w-full p-6 text-white shadow-2xl relative animate-in fade-in zoom-in-95">
@@ -826,7 +897,7 @@ export default function BeaconTab({
         </div>
       )}
 
-      {/* 5. EMERGENCY FIRST-AID VIDEO EMBED MODAL (Direct YouTube Embed AhANvBB9hz0) */}
+      {/* 6. EMERGENCY FIRST-AID VIDEO EMBED MODAL (Direct YouTube Embed AhANvBB9hz0) */}
       {showEmergencyVideo && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
           <div className="bg-slate-900 border-2 border-red-500/80 rounded-3xl max-w-3xl w-full p-6 text-white shadow-2xl relative animate-in zoom-in-95">

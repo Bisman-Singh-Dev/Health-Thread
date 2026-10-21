@@ -126,10 +126,10 @@ export default function LumiBeaconFace({
   }, [state]);
 
   const sizeClasses = {
-    sm: "w-64 h-52",
-    md: "w-80 h-64",
-    lg: "w-full max-w-[540px] h-[370px] sm:max-w-[580px] sm:h-[410px]",
-    xl: "w-full max-w-[660px] h-[440px] sm:max-w-[720px] sm:h-[480px]"
+    sm: "w-72 h-56",
+    md: "w-96 h-76",
+    lg: "w-full max-w-[620px] h-[430px] sm:max-w-[700px] sm:h-[480px]",
+    xl: "w-full max-w-[740px] h-[500px] sm:max-w-[840px] sm:h-[560px]"
   }[size];
 
   const isDormant = state === "dormant";
@@ -153,43 +153,43 @@ export default function LumiBeaconFace({
         }}
         transition={{ duration: isEmergency ? 0.8 : isListening ? 1.5 : 3.5, repeat: Infinity, ease: "easeInOut" }}
         className={`absolute rounded-full blur-3xl pointer-events-none transition-colors duration-700 ${
-          isEmergency ? "bg-red-500/40 w-full max-w-[620px] h-96" : isListening ? "bg-cyan-400/35 w-full max-w-[600px] h-96" : "bg-sky-400/25 w-full max-w-[540px] h-88"
+          isEmergency ? "bg-red-500/35 w-full max-w-[720px] h-[480px]" : isListening ? "bg-cyan-400/30 w-full max-w-[700px] h-[480px]" : "bg-sky-400/20 w-full max-w-[680px] h-[440px]"
         }`}
       />
 
       {/* Robot Head Outer Shell - Exactly matching Image 2 */}
-      <div className={`relative ${sizeClasses} rounded-[48%] bg-gradient-to-b from-[#f8fafc] via-[#edf2f7] to-[#cbd5e1] p-3 sm:p-4 shadow-2xl border border-white/90 flex items-center justify-center overflow-hidden transition-all duration-300`}>
+      <div className={`relative ${sizeClasses} rounded-[48%] bg-gradient-to-b from-[#f8fafc] via-[#edf2f7] to-[#cbd5e1] p-3.5 sm:p-5 shadow-2xl border border-white/95 flex items-center justify-center overflow-hidden transition-all duration-300`}>
         
         {/* Soft Pearlescent Shell Highlights */}
-        <div className="absolute inset-0 bg-radial from-white/80 via-transparent to-slate-400/25 pointer-events-none" />
-        <div className="absolute top-2 left-1/4 right-1/4 h-10 bg-gradient-to-b from-white to-transparent rounded-full blur-[2px] pointer-events-none" />
+        <div className="absolute inset-0 bg-radial from-white/90 via-transparent to-slate-400/20 pointer-events-none" />
+        <div className="absolute top-2 left-1/4 right-1/4 h-12 bg-gradient-to-b from-white to-transparent rounded-full blur-[2px] pointer-events-none" />
         
         {/* Head Shell Seam Lines & Side Ear Caps (From Image 2) */}
-        <div className="absolute left-1.5 top-1/4 bottom-1/4 w-4 rounded-l-full bg-gradient-to-r from-slate-400 to-slate-200 border border-slate-300 shadow-inner flex flex-col items-center justify-center gap-1.5">
-          <div className="w-1.5 h-8 rounded-full bg-slate-500/50" />
+        <div className="absolute left-2 top-1/4 bottom-1/4 w-5 rounded-l-full bg-gradient-to-r from-slate-400 to-slate-200 border border-slate-300 shadow-inner flex flex-col items-center justify-center gap-2">
+          <div className="w-2 h-10 rounded-full bg-slate-500/50" />
         </div>
-        <div className="absolute right-1.5 top-1/4 bottom-1/4 w-4 rounded-r-full bg-gradient-to-l from-slate-400 to-slate-200 border border-slate-300 shadow-inner flex flex-col items-center justify-center gap-1.5">
-          <div className="w-1.5 h-8 rounded-full bg-slate-500/50" />
+        <div className="absolute right-2 top-1/4 bottom-1/4 w-5 rounded-r-full bg-gradient-to-l from-slate-400 to-slate-200 border border-slate-300 shadow-inner flex flex-col items-center justify-center gap-2">
+          <div className="w-2 h-10 rounded-full bg-slate-500/50" />
         </div>
 
         {/* Top Forehead Sensor Arc Bar */}
-        <div className="absolute top-4 w-32 sm:w-44 h-2.5 rounded-full bg-slate-300/70 shadow-inner border border-slate-400/40 flex items-center justify-center">
+        <div className="absolute top-5 w-40 sm:w-56 h-3 rounded-full bg-slate-300/70 shadow-inner border border-slate-400/40 flex items-center justify-center">
           <motion.div 
             animate={{ opacity: isListening ? [0.4, 1, 0.4] : 0.6 }}
             transition={{ duration: 1.2, repeat: Infinity }}
-            className={`w-16 h-1.5 rounded-full ${isEmergency ? "bg-red-500" : isListening ? "bg-cyan-400" : "bg-slate-400"}`}
+            className={`w-20 h-1.5 rounded-full ${isEmergency ? "bg-red-500" : isListening ? "bg-cyan-400" : "bg-slate-400"}`}
           />
         </div>
 
         {/* Face Recess Contour (Center White Porcelain Surface) */}
-        <div className="relative w-full h-full rounded-[46%] bg-gradient-to-b from-white via-[#f1f5f9] to-[#e2e8f0] shadow-inner flex flex-col items-center justify-center px-4 sm:px-8">
+        <div className="relative w-full h-full rounded-[46%] bg-gradient-to-b from-white via-[#f1f5f9] to-[#e2e8f0] shadow-inner flex flex-col items-center justify-center px-4 sm:px-10">
           
           {/* Subtle Pink Blush on Cheeks (Direct from Image 2) */}
-          <div className="absolute left-6 sm:left-12 top-[60%] w-20 h-10 rounded-full bg-[#f43f5e]/15 blur-lg pointer-events-none" />
-          <div className="absolute right-6 sm:right-12 top-[60%] w-20 h-10 rounded-full bg-[#f43f5e]/15 blur-lg pointer-events-none" />
+          <div className="absolute left-6 sm:left-14 top-[64%] w-24 h-12 rounded-full bg-[#f43f5e]/15 blur-xl pointer-events-none" />
+          <div className="absolute right-6 sm:right-14 top-[64%] w-24 h-12 rounded-full bg-[#f43f5e]/15 blur-xl pointer-events-none" />
 
           {/* TWO BIG EYES CLUSTER - Full Big Like Image 2 */}
-          <div className="flex items-center justify-center gap-6 sm:gap-12 md:gap-16 w-full max-w-[440px] sm:max-w-[500px] px-2 z-10 -mt-3">
+          <div className="flex items-center justify-center gap-6 sm:gap-12 md:gap-16 w-full max-w-[560px] sm:max-w-[640px] px-2 z-10 -mt-4">
             
             {/* LEFT EYE */}
             <RobotEye 
@@ -217,7 +217,7 @@ export default function LumiBeaconFace({
           </div>
 
           {/* NOSE BRIDGE SHADE */}
-          <div className="w-4 h-2 rounded-full bg-slate-300/40 blur-[1px] mt-2 mb-1 pointer-events-none" />
+          <div className="w-5 h-2.5 rounded-full bg-slate-300/40 blur-[1px] mt-3 mb-1 pointer-events-none" />
 
           {/* ROUND MOUTH HOLE (Exact Match to Image 2's circular mouth) */}
           <motion.div
@@ -227,7 +227,7 @@ export default function LumiBeaconFace({
               borderRadius: isDormant ? "40%" : "50%"
             }}
             transition={{ type: "spring", stiffness: 350, damping: 25 }}
-            className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-b from-[#1e293b] via-[#0f172a] to-[#020617] border-2 border-[#94a3b8] shadow-inner flex items-center justify-center overflow-hidden"
+            className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-gradient-to-b from-[#1e293b] via-[#0f172a] to-[#020617] border-2 border-[#94a3b8] shadow-inner flex items-center justify-center overflow-hidden"
           >
             {/* Deep Red Oral Cavity Glow */}
             <div className="absolute inset-0 bg-radial from-[#881337]/60 via-transparent to-black" />
@@ -236,19 +236,20 @@ export default function LumiBeaconFace({
               <motion.div 
                 animate={{ scale: [0.8, 1.45, 0.8], opacity: [0.6, 1, 0.6] }}
                 transition={{ duration: 0.3, repeat: Infinity }}
-                className="w-5 h-5 rounded-full bg-[#00b4d8]/80 blur-xs"
+                className="w-6 h-6 rounded-full bg-[#00b4d8]/80 blur-xs"
               />
             )}
             {isEmergency && (
               <motion.div 
                 animate={{ scale: [0.8, 1.3, 0.8] }}
                 transition={{ duration: 0.4, repeat: Infinity }}
-                className="w-5 h-5 rounded-full bg-red-600/80 blur-xs"
+                className="w-6 h-6 rounded-full bg-red-600/80 blur-xs"
               />
             )}
           </motion.div>
         </div>
       </div>
+
 
 
       {/* Status Badge Below Beacon Face */}
@@ -296,38 +297,38 @@ function RobotEye({
   isCamera: boolean;
 }) {
   return (
-    <div className="relative w-36 h-36 sm:w-44 sm:h-44 md:w-48 md:h-48 rounded-full flex items-center justify-center shrink-0">
+    <div className="relative w-44 h-44 sm:w-56 sm:h-56 md:w-64 md:h-64 rounded-full flex items-center justify-center shrink-0">
       
       {/* 1. OUTER SOCKET RECESS */}
-      <div className="absolute inset-0 rounded-full bg-gradient-to-b from-[#94a3b8] via-[#cbd5e1] to-[#e2e8f0] shadow-lg border border-slate-300" />
+      <div className="absolute inset-0 rounded-full bg-gradient-to-b from-[#94a3b8] via-[#cbd5e1] to-[#e2e8f0] shadow-xl border border-slate-300" />
 
       {/* 2. METALLIC BRONZE / ROSE-GOLD RING (Direct from Image 2) */}
-      <div className="absolute inset-2 sm:inset-2.5 rounded-full bg-gradient-to-tr from-[#92400e] via-[#f59e0b] to-[#b45309] p-[3.5px] sm:p-[4px] shadow-md">
-        <div className="w-full h-full rounded-full bg-gradient-to-b from-[#78350f] via-[#b45309] to-[#451a03] p-[2.5px]">
-          <div className="w-full h-full rounded-full bg-[#18181b] border border-[#f59e0b]/50 shadow-inner" />
+      <div className="absolute inset-2.5 sm:inset-3.5 rounded-full bg-gradient-to-tr from-[#92400e] via-[#f59e0b] to-[#b45309] p-[4.5px] sm:p-[6px] shadow-lg">
+        <div className="w-full h-full rounded-full bg-gradient-to-b from-[#78350f] via-[#b45309] to-[#451a03] p-[3px]">
+          <div className="w-full h-full rounded-full bg-[#18181b] border border-[#f59e0b]/60 shadow-inner" />
         </div>
       </div>
 
       {/* 3. CAMERA LENS EYE BALL CONTAINER with Eyelid Clipping */}
-      <div className="relative w-[82%] h-[82%] rounded-full bg-[#05070a] overflow-hidden shadow-2xl flex items-center justify-center border border-white/15">
+      <div className="relative w-[84%] h-[84%] rounded-full bg-[#05070a] overflow-hidden shadow-2xl flex items-center justify-center border border-white/20">
         
         {/* Concentric Aperture Groove Rings */}
-        <div className="absolute inset-2 sm:inset-3 rounded-full border border-slate-800/90 pointer-events-none" />
-        <div className="absolute inset-4 sm:inset-6 rounded-full border border-slate-700/70 pointer-events-none" />
-        <div className="absolute inset-6 sm:inset-9 rounded-full border border-slate-600/40 pointer-events-none" />
+        <div className="absolute inset-3 sm:inset-4 rounded-full border border-slate-800/90 pointer-events-none" />
+        <div className="absolute inset-6 sm:inset-8 rounded-full border border-slate-700/70 pointer-events-none" />
+        <div className="absolute inset-9 sm:inset-12 rounded-full border border-slate-600/40 pointer-events-none" />
 
         {/* PUPIL & IRIS ASSEMBLY (Moves with Saccade / LookPos) */}
         <motion.div
           animate={{
-            x: isDormant ? 0 : lookPos.x * 1.3,
-            y: isDormant ? 4 : lookPos.y * 1.3,
+            x: isDormant ? 0 : lookPos.x * 1.4,
+            y: isDormant ? 4 : lookPos.y * 1.4,
             scale: isListening ? 1.08 : isThinking ? [1, 0.95, 1.05] : 1
           }}
           transition={{ type: "spring", stiffness: 280, damping: 22 }}
-          className="relative w-20 h-20 sm:w-26 sm:h-26 md:w-30 md:h-30 rounded-full flex items-center justify-center"
+          className="relative w-28 h-28 sm:w-36 sm:h-36 md:w-42 md:h-42 rounded-full flex items-center justify-center"
         >
           {/* Deep Black Core Pupil */}
-          <div className="w-16 h-16 sm:w-22 sm:h-22 md:w-24 md:h-24 rounded-full bg-radial from-[#090d16] via-[#020408] to-black shadow-inner flex items-center justify-center border border-slate-800/60">
+          <div className="w-22 h-22 sm:w-28 sm:h-28 md:w-34 md:h-34 rounded-full bg-radial from-[#090d16] via-[#020408] to-black shadow-inner flex items-center justify-center border border-slate-800/70">
             {/* Glowing Camera Sensor Center Dot */}
             <motion.div
               animate={{
@@ -335,15 +336,15 @@ function RobotEye({
                 opacity: isDormant ? 0.3 : 0.95
               }}
               transition={{ duration: 0.8, repeat: Infinity }}
-              className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full ${
-                isEmergency ? "bg-red-500 shadow-[0_0_16px_#ef4444]" : isCamera ? "bg-emerald-400 shadow-[0_0_16px_#10b981]" : isListening ? "bg-cyan-400 shadow-[0_0_14px_#22d3ee]" : "bg-sky-400/90 shadow-[0_0_12px_#38bdf8]"
+              className={`w-7 h-7 sm:w-9 sm:h-9 rounded-full ${
+                isEmergency ? "bg-red-500 shadow-[0_0_20px_#ef4444]" : isCamera ? "bg-emerald-400 shadow-[0_0_20px_#10b981]" : isListening ? "bg-cyan-400 shadow-[0_0_18px_#22d3ee]" : "bg-sky-400/90 shadow-[0_0_16px_#38bdf8]"
               }`}
             />
           </div>
 
           {/* Photorealistic Curved Lens Reflection Highlight (from Image 2) */}
-          <div className="absolute top-2 left-2.5 w-6 h-4 sm:w-8 sm:h-5 rounded-full bg-gradient-to-br from-white via-white/90 to-transparent blur-[0.4px] rotate-[-25deg] pointer-events-none" />
-          <div className="absolute bottom-3.5 right-3.5 w-2.5 h-2.5 rounded-full bg-white/80 blur-[0.2px] pointer-events-none" />
+          <div className="absolute top-3 left-4 w-9 h-6 sm:w-12 sm:h-8 rounded-full bg-gradient-to-br from-white via-white/90 to-transparent blur-[0.4px] rotate-[-25deg] pointer-events-none" />
+          <div className="absolute bottom-5 right-5 w-3.5 h-3.5 rounded-full bg-white/80 blur-[0.2px] pointer-events-none" />
         </motion.div>
 
         {/* 4. UPPER EYELID (For natural human-like blinking) */}
@@ -368,8 +369,9 @@ function RobotEye({
       </div>
 
       {/* Convex Glass Dome Glare Arc across entire eye */}
-      <div className="absolute inset-2 sm:inset-2.5 rounded-full bg-gradient-to-tr from-white/35 via-transparent to-transparent pointer-events-none z-30 opacity-75" />
+      <div className="absolute inset-2.5 sm:inset-3.5 rounded-full bg-gradient-to-tr from-white/35 via-transparent to-transparent pointer-events-none z-30 opacity-75" />
     </div>
   );
+
 
 }
