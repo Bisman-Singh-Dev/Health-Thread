@@ -63,6 +63,7 @@ export default function BeaconTab({
   const analyserRef = useRef<AnalyserNode | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const animFrameRef = useRef<number | null>(null);
+  const speechImmunityUntilRef = useRef<number>(0);
 
   // Camera State
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -290,11 +291,23 @@ export default function BeaconTab({
       const spokenText = currentResult[0].transcript.trim();
       setTranscript(spokenText);
 
-      // If Lumi is currently talking, ignore Lumi's own self-echo
+      // If Lumi is currently talking, check immunity window and allow interruption
       if (isSpeakingRef.current) {
-        // Only interrupt if user clearly speaks something different or long (>15 chars)
-        const isEcho = spokenText.toLowerCase().includes("waking up") || spokenText.toLowerCase().includes("explain what");
-        if (!isEcho && spokenText.length > 8) {
+        // Immunity window right after speaking starts to prevent old buffered speech from interrupting
+        if (Date.now() < speechImmunityUntilRef.current) {
+          return;
+        }
+
+        const lowerEcho = spokenText.toLowerCase();
+        const isEcho = lowerEcho.includes("waking up") || 
+                       lowerEcho.includes("explain what") ||
+                       lowerEcho.includes("according to") ||
+                       lowerEcho.includes("diagnosis") ||
+                       lowerEcho.includes("treat it") ||
+                       lowerEcho.includes("consult a");
+
+        // If user clearly speaks to interrupt (not Lumi's own echo)
+        if (!isEcho && spokenText.length > 6) {
           interruptLumi();
         }
         return;
@@ -494,11 +507,22 @@ export default function BeaconTab({
         emergencyContact: "911 / 112"
       });
 
-      // Speak diagnosis aloud with female voice (no asterisks)
-      speakWithLumi(content, () => {
-        setLumiState("awake");
-        setStatusMessage("Diagnosis saved to Dashboard & Lifelong Timeline.");
-      });
+      // Speak diagnosis aloud with female voice after a short interval
+      setStatusMessage("Diagnosis ready. Lumi will explain findings...");
+      speechImmunityUntilRef.current = Date.now() + 2500;
+      setTranscript("");
+      setAccumulatedSpeech("");
+      accumulatedSpeechRef.current = "";
+
+      const spokenSummary = `According to my diagnosis, you may have ${conditionName}. Here is what to do. ${steps.slice(0, 3).join(". ")}. You should consult a ${specialist}.`;
+
+      setTimeout(() => {
+        speechImmunityUntilRef.current = Date.now() + 2500;
+        speakWithLumi(spokenSummary, () => {
+          setLumiState("awake");
+          setStatusMessage("Diagnosis saved to Dashboard & Lifelong Timeline.");
+        });
+      }, 700);
 
     } catch (e) {
       setLumiState("awake");
@@ -676,11 +700,22 @@ export default function BeaconTab({
         photoUrl: imageDataUrl
       });
 
-      // Speak result aloud
-      speakWithLumi(content, () => {
-        setLumiState("awake");
-        setStatusMessage("Photo diagnosis saved to Dashboard & Lifelong Timeline.");
-      });
+      // Speak photo diagnosis aloud after a short interval
+      setStatusMessage("Photo analysis ready. Lumi will explain findings...");
+      speechImmunityUntilRef.current = Date.now() + 2500;
+      setTranscript("");
+      setAccumulatedSpeech("");
+      accumulatedSpeechRef.current = "";
+
+      const spokenSummary = `According to my camera scan, ${conditionName}. Here is what to do. ${steps.slice(0, 3).join(". ")}. Please consult a ${specialist}.`;
+
+      setTimeout(() => {
+        speechImmunityUntilRef.current = Date.now() + 2500;
+        speakWithLumi(spokenSummary, () => {
+          setLumiState("awake");
+          setStatusMessage("Photo diagnosis saved to Dashboard & Lifelong Timeline.");
+        });
+      }, 700);
 
     } catch (err) {
       console.error(err);

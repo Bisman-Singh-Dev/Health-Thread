@@ -41,9 +41,15 @@ export default function LoginPage() {
       router.push("/dashboard");
     } catch (err: any) {
       console.warn("Google popup error:", err);
-      // If popup was closed by user or cancelled, show friendly message
-      if (err?.code !== "auth/popup-closed-by-user") {
-        setError(err?.message || "Google sign-in could not be completed. You can also sign in with your name below.");
+      // If popup was closed by user or cancelled, do not show any error
+      if (err?.code === "auth/popup-closed-by-user" || err?.code === "auth/cancelled-popup-request") {
+        setIsLoading(false);
+        return;
+      }
+      if (err?.code === "auth/unauthorized-domain") {
+        setError("Domain not yet authorized in Firebase Console. Please add it to Firebase Console > Authentication > Settings > Authorized Domains, or sign in with your name below.");
+      } else {
+        setError("Google sign-in could not be completed. You can also sign in with your name below.");
       }
       setIsLoading(false);
     }
