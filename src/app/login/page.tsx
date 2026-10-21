@@ -223,13 +223,13 @@ export default function LoginPage() {
                 <form onSubmit={handleDirectSignIn} className="space-y-3.5">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      {role === "doctor" ? "Physician Full Name" : "Your Full Name"}
+                      Your Full Name
                     </label>
                     <input
                       type="text"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      placeholder={role === "doctor" ? "e.g. Dr. Sarah Jenkins" : "e.g. Alex Morgan"}
+                      placeholder="e.g. Alex Morgan"
                       required
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#00a896] focus:ring-2 focus:ring-[#00a896]/20 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all"
                     />
@@ -247,21 +247,6 @@ export default function LoginPage() {
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#00a896] focus:ring-2 focus:ring-[#00a896]/20 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all"
                     />
                   </div>
-
-                  {role === "doctor" && (
-                    <div>
-                      <label className="block text-xs font-semibold text-slate-700 mb-1">
-                        Hospital or Clinical Practice
-                      </label>
-                      <input
-                        type="text"
-                        value={organization}
-                        onChange={(e) => setOrganization(e.target.value)}
-                        placeholder="e.g. Global Health Network, Mayo Clinic"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:border-[#0077b6] focus:ring-2 focus:ring-[#0077b6]/20 text-xs sm:text-sm font-medium text-slate-900 outline-none transition-all"
-                      />
-                    </div>
-                  )}
 
                   <button
                     type="submit"
