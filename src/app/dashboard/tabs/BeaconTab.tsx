@@ -88,14 +88,27 @@ export default function BeaconTab({
     initGesture();
   }, []);
 
+  const [inputText, setInputText] = useState("");
+  const [lastSpokenReply, setLastSpokenReply] = useState<string>("");
+  const lumiStateRef = useRef<LumiState>(lumiState);
+  const isSpeakingRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    lumiStateRef.current = lumiState;
+  }, [lumiState]);
+
+  useEffect(() => {
+    isSpeakingRef.current = isSpeaking;
+  }, [isSpeaking]);
+
   // Deepgram TTS Speech Output (Aura-Asteria female voice, clean without asterisks)
   const speakWithLumi = async (text: string, onEnd?: () => void) => {
     if (audioPlayerRef.current) {
-      audioPlayerRef.current.pause();
+      try { audioPlayerRef.current.pause(); } catch(e) {}
       audioPlayerRef.current = null;
     }
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
+      try { window.speechSynthesis.cancel(); } catch(e) {}
     }
 
     // Clean text thoroughly so no asterisks are ever pronounced
@@ -113,7 +126,9 @@ export default function BeaconTab({
     }
 
     setIsSpeaking(true);
+    isSpeakingRef.current = true;
     setLumiState("speaking");
+    setLastSpokenReply(cleanSpoken);
 
     try {
       const res = await fetch("/api/tts", {
@@ -130,12 +145,14 @@ export default function BeaconTab({
 
         audio.onended = () => {
           setIsSpeaking(false);
+          isSpeakingRef.current = false;
           setLumiState("awake");
           audioPlayerRef.current = null;
           if (onEnd) onEnd();
         };
         audio.onerror = () => {
           setIsSpeaking(false);
+          isSpeakingRef.current = false;
           setLumiState("awake");
           audioPlayerRef.current = null;
           if (onEnd) onEnd();
@@ -147,61 +164,88 @@ export default function BeaconTab({
       console.warn("Lumi TTS audio error:", e);
     }
 
-    // Fallback to browser TTS if offline
+    // Fallback to browser high-quality TTS
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       const u = new SpeechSynthesisUtterance(cleanSpoken);
       u.rate = 1.0;
+      u.pitch = 1.1; // Gentle female pitch
       u.onend = () => {
         setIsSpeaking(false);
+        isSpeakingRef.current = false;
+        setLumiState("awake");
+        if (onEnd) onEnd();
+      };
+      u.onerror = () => {
+        setIsSpeaking(false);
+        isSpeakingRef.current = false;
         setLumiState("awake");
         if (onEnd) onEnd();
       };
       window.speechSynthesis.speak(u);
     } else {
       setIsSpeaking(false);
+      isSpeakingRef.current = false;
       setLumiState("awake");
       if (onEnd) onEnd();
     }
   };
 
-  // Continuous Wake-Word Voice Listener
+  // Continuous Wake-Word Voice Listener (Initialized once to avoid churn)
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
+    if (!SpeechRecognition) {
+      setStatusMessage("Voice recognition not supported by browser. Use mic or type buttons below.");
+      return;
+    }
 
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     recognition.lang = "en-US";
 
     recognition.onresult = async (event: any) => {
+      // Don't listen to Lumi speaking her own responses
+      if (isSpeakingRef.current) return;
+
       const last = event.results.length - 1;
-      const spokenText = event.results[last][0].transcript.trim().toLowerCase();
+      const currentResult = event.results[last];
+      const spokenText = currentResult[0].transcript.trim();
       setTranscript(spokenText);
 
-      // 1. "WAKE UP LUMI"
-      if (spokenText.includes("wake up lumi") || spokenText.includes("wake up") || spokenText.includes("hey lumi")) {
+      // Only act on finalized speech segments
+      if (!currentResult.isFinal) return;
+
+      const lower = spokenText.toLowerCase();
+
+      // 1. "WAKE UP LUMI" / "WAKE UP" / "HEY LUMI"
+      if (lower.includes("wake up") || lower.includes("hey lumi") || lower.includes("wake lumi")) {
         handleWakeUpLumi();
       }
-      // 2. "CAMERA LUMI"
-      else if (spokenText.includes("camera lumi") || spokenText.includes("open camera") || spokenText.includes("scan lumi")) {
+      // 2. "CAMERA LUMI" / "OPEN CAMERA"
+      else if (lower.includes("camera lumi") || lower.includes("open camera") || lower.includes("take photo")) {
         handleOpenCamera("standard");
       }
-      // 3. "EMERGENCY LUMI"
-      else if (spokenText.includes("emergency lumi") || spokenText.includes("emergency") || spokenText.includes("urgent")) {
+      // 3. "EMERGENCY LUMI" / "EMERGENCY"
+      else if (lower.includes("emergency lumi") || lower.includes("emergency") || lower.includes("call ambulance")) {
         handleOpenCamera("emergency");
       }
       // 4. Clinical Symptom Discussion with Lumi
-      else if (lumiState === "listening" && spokenText.length > 3) {
+      else if (lower.length > 4) {
         handleSymptomInput(spokenText);
       }
     };
 
-    recognition.onerror = () => {};
+    recognition.onerror = (e: any) => {
+      if (e.error !== "no-speech") {
+        console.warn("Speech recognition notice:", e.error);
+      }
+    };
+
     recognition.onend = () => {
-      if (isListening) {
+      // Auto restart voice listener if not speaking
+      if (!isSpeakingRef.current) {
         try { recognition.start(); } catch (e) {}
       }
     };
@@ -215,16 +259,18 @@ export default function BeaconTab({
     return () => {
       try { recognition.stop(); } catch (e) {}
     };
-  }, [lumiState, isListening]);
+  }, []);
 
   // Command 1: "Wake Up Lumi" Flow
   const handleWakeUpLumi = () => {
-    setStatusMessage("Waking Up! Lumi is ready to listen.");
+    setStatusMessage("Waking Up! Lumi is listening for your symptoms...");
+    setLumiState("listening");
     speakWithLumi("Waking Up! Please explain what happened.", () => {
       setLumiState("listening");
-      setStatusMessage("Please explain your symptoms or how you are feeling...");
+      setStatusMessage("Listening... Tell Lumi what you are feeling.");
     });
   };
+
 
   // Symptom Analysis via Groq LLM
   const handleSymptomInput = async (symptoms: string) => {
@@ -541,28 +587,119 @@ export default function BeaconTab({
           onClick={handleWakeUpLumi}
         />
 
-        {/* Action Quick Prompts */}
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3 text-xs">
+        {/* Live Spoken Transcript & Feedback Display */}
+        {(transcript || lastSpokenReply) && (
+          <div className="w-full max-w-xl mt-6 p-4 rounded-2xl bg-slate-50 border border-slate-200 shadow-inner space-y-2">
+            {transcript && (
+              <div className="flex items-start gap-2 text-xs">
+                <span className="px-2 py-0.5 rounded-md bg-slate-200 text-slate-700 font-bold text-[10px] uppercase">
+                  You Spoke
+                </span>
+                <span className="text-slate-800 font-medium italic">"{transcript}"</span>
+              </div>
+            )}
+            {lastSpokenReply && (
+              <div className="flex items-start justify-between gap-3 text-xs pt-2 border-t border-slate-200">
+                <div className="flex items-start gap-2">
+                  <span className="px-2 py-0.5 rounded-md bg-cyan-100 text-cyan-800 font-bold text-[10px] uppercase">
+                    Lumi Response
+                  </span>
+                  <span className="text-slate-700 line-clamp-2">{lastSpokenReply}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => speakWithLumi(lastSpokenReply)}
+                  className="px-2.5 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-[11px] font-bold shrink-0 flex items-center gap-1 shadow-xs transition-colors"
+                  title="Replay Voice Feedback"
+                >
+                  <Volume2 className="w-3.5 h-3.5" />
+                  <span>Replay</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Direct Symptom Input Bar (Type or Speak) */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (inputText.trim()) {
+              handleSymptomInput(inputText);
+              setInputText("");
+            }
+          }}
+          className="w-full max-w-xl mt-4 flex items-center gap-2"
+        >
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              placeholder="Tell or type symptoms here (e.g. fever, headache, back pain)..."
+              className="w-full pl-3.5 pr-10 py-2.5 rounded-xl border border-slate-300 focus:border-[#00c4d9] focus:ring-2 focus:ring-[#00c4d9]/20 text-xs sm:text-sm text-slate-800 outline-none transition-all shadow-xs"
+            />
+            {inputText && (
+              <button
+                type="button"
+                onClick={() => setInputText("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
           <button
+            type="submit"
+            disabled={!inputText.trim() || lumiState === "thinking"}
+            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-[#00b4d8] to-[#0077b6] hover:opacity-95 text-white font-bold text-xs tracking-wide shadow-xs disabled:opacity-50 transition-all flex items-center gap-1.5 shrink-0"
+          >
+            {lumiState === "thinking" ? (
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <>
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Ask Lumi</span>
+              </>
+            )}
+          </button>
+        </form>
+
+        {/* Action Quick Prompts */}
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2 text-xs">
+          <button
+            type="button"
+            onClick={handleWakeUpLumi}
+            className="px-3 py-1.5 rounded-xl bg-cyan-50 hover:bg-cyan-100 text-[#0077b6] border border-cyan-200 font-bold transition-colors flex items-center gap-1"
+          >
+            <Mic className="w-3.5 h-3.5" />
+            <span>"Wake Up Lumi"</span>
+          </button>
+          <button
+            type="button"
             onClick={() => handleSymptomInput("I have a high fever, sore throat, and severe fatigue since yesterday.")}
-            className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
+            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
           >
             "Fever & Sore Throat"
           </button>
           <button
+            type="button"
             onClick={() => handleSymptomInput("My knee is swollen and aching after a twisting fall.")}
-            className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
+            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
           >
             "Swollen Knee Sprain"
           </button>
           <button
+            type="button"
             onClick={() => handleSymptomInput("Persistent dry cough and chest tightness.")}
-            className="px-3.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
+            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
           >
             "Chest Tightness & Cough"
           </button>
         </div>
       </div>
+
 
       {/* 3. LATEST DIAGNOSIS CARD */}
       {latestDiagnosis && (

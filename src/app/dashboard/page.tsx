@@ -15,9 +15,17 @@ import {
   ShieldCheck, 
   Menu, 
   X, 
-  Sparkles,
-  User,
-  HeartPulse
+  Sparkles, 
+  User, 
+  HeartPulse,
+  LayoutGrid,
+  Database,
+  ArrowRight,
+  ExternalLink,
+  QrCode,
+  Camera,
+  Activity,
+  CheckCircle2
 } from "lucide-react";
 import { HealthThreadLogo, BrandAccentBar } from "@/components/HealthThreadLogo";
 import DashboardTab from "./tabs/DashboardTab";
@@ -30,6 +38,7 @@ import { getActiveUser, getEmergencyProfile, VaultUser, EmergencyMedicalProfile 
 export default function DashboardPage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [viewMode, setViewMode] = useState<"tabs" | "grid">("tabs");
   const [user, setUser] = useState<VaultUser | null>(() => {
     if (typeof window !== "undefined") {
       return getActiveUser();
@@ -72,6 +81,7 @@ export default function DashboardPage() {
   };
 
   const getPageTitle = () => {
+    if (viewMode === "grid") return "Grid Overview — All Health Thread Tabs";
     switch (activeTab) {
       case "dashboard": return "Patient Dashboard";
       case "timeline": return "Lifelong Medical Timeline";
@@ -86,7 +96,7 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-[#0b192c] flex flex-col items-center justify-center text-white select-none">
         <div className="w-8 h-8 border-3 border-cyan-400 border-t-transparent rounded-full animate-spin mb-3" />
-        <p className="text-xs text-cyan-200 font-medium">Connecting to HealthThread Vault...</p>
+        <p className="text-xs text-cyan-200 font-medium">Connecting to HealthThread Vault & Firebase...</p>
       </div>
     );
   }
@@ -119,17 +129,37 @@ export default function DashboardPage() {
           {/* Navigation Links */}
           <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1 text-xs font-semibold">
             
+            {/* GRID ALL TABS BUTTON */}
+            <div className="pb-2">
+              <button
+                onClick={() => { setViewMode("grid"); setMobileMenuOpen(false); }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all border ${
+                  viewMode === "grid"
+                    ? "bg-gradient-to-r from-indigo-600 to-blue-600 border-indigo-400 text-white font-bold shadow-md"
+                    : "bg-slate-800/60 border-slate-700/80 text-cyan-300 hover:bg-slate-800 hover:text-white"
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <LayoutGrid className="w-4 h-4 text-cyan-300" />
+                  <span>Grid All Tabs</span>
+                </div>
+                <span className="px-1.5 py-0.5 rounded text-[9px] bg-white/20 text-white uppercase font-bold">
+                  View All
+                </span>
+              </button>
+            </div>
+
             <div className="pt-2 pb-1.5 px-3">
               <span className="text-[10px] uppercase font-bold tracking-widest text-[#00c4d9]">
-                Core Health Thread
+                Core Tabs
               </span>
             </div>
 
             {/* TAB 1: DASHBOARD */}
             <button
-              onClick={() => { setActiveTab("dashboard"); setMobileMenuOpen(false); }}
+              onClick={() => { setActiveTab("dashboard"); setViewMode("tabs"); setMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
-                activeTab === "dashboard"
+                activeTab === "dashboard" && viewMode === "tabs"
                   ? "bg-gradient-to-r from-[#00b4d8] to-[#0077b6] text-white shadow-md font-bold"
                   : "text-slate-300 hover:bg-slate-800 hover:text-white"
               }`}
@@ -140,9 +170,9 @@ export default function DashboardPage() {
 
             {/* TAB 2: LIFELONG TIMELINE */}
             <button
-              onClick={() => { setActiveTab("timeline"); setMobileMenuOpen(false); }}
+              onClick={() => { setActiveTab("timeline"); setViewMode("tabs"); setMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
-                activeTab === "timeline"
+                activeTab === "timeline" && viewMode === "tabs"
                   ? "bg-gradient-to-r from-[#00b4d8] to-[#0077b6] text-white shadow-md font-bold"
                   : "text-slate-300 hover:bg-slate-800 hover:text-white"
               }`}
@@ -153,9 +183,9 @@ export default function DashboardPage() {
 
             {/* TAB 3: EMERGENCY PROFILE */}
             <button
-              onClick={() => { setActiveTab("emergency"); setMobileMenuOpen(false); }}
+              onClick={() => { setActiveTab("emergency"); setViewMode("tabs"); setMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
-                activeTab === "emergency"
+                activeTab === "emergency" && viewMode === "tabs"
                   ? "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-md font-bold"
                   : "text-slate-300 hover:bg-slate-800 hover:text-white"
               }`}
@@ -173,9 +203,9 @@ export default function DashboardPage() {
 
             {/* TAB 4: BEACON */}
             <button
-              onClick={() => { setActiveTab("beacon"); setMobileMenuOpen(false); }}
+              onClick={() => { setActiveTab("beacon"); setViewMode("tabs"); setMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
-                activeTab === "beacon"
+                activeTab === "beacon" && viewMode === "tabs"
                   ? "bg-gradient-to-r from-teal-500 to-[#00a896] text-white shadow-md font-bold"
                   : "text-slate-300 hover:bg-slate-800 hover:text-white"
               }`}
@@ -186,9 +216,9 @@ export default function DashboardPage() {
 
             {/* TAB 5: MEDICINE REMINDER */}
             <button
-              onClick={() => { setActiveTab("reminders"); setMobileMenuOpen(false); }}
+              onClick={() => { setActiveTab("reminders"); setViewMode("tabs"); setMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
-                activeTab === "reminders"
+                activeTab === "reminders" && viewMode === "tabs"
                   ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md font-bold"
                   : "text-slate-300 hover:bg-slate-800 hover:text-white"
               }`}
@@ -224,7 +254,7 @@ export default function DashboardPage() {
         <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
           
           {/* Top Bar Header */}
-          <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200/90 h-16 px-4 sm:px-8 flex items-center justify-between">
+          <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-slate-200/90 h-16 px-4 sm:px-8 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setMobileMenuOpen(true)}
@@ -237,40 +267,226 @@ export default function DashboardPage() {
               </h2>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <div className="flex items-center gap-2.5 sm:gap-4">
+              
+              {/* TABS VS GRID VIEW SWITCHER */}
+              <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("tabs")}
+                  className={`px-3 py-1 rounded-lg transition-all ${
+                    viewMode === "tabs"
+                      ? "bg-white text-slate-900 shadow-xs font-bold"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  Single Tab
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("grid")}
+                  className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 ${
+                    viewMode === "grid"
+                      ? "bg-gradient-to-r from-[#00b4d8] to-[#0077b6] text-white shadow-xs font-bold"
+                      : "text-slate-500 hover:text-slate-800"
+                  }`}
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                  <span>Grid All Tabs</span>
+                </button>
+              </div>
+
+              {/* FIREBASE DATABASE LIVE INDICATOR */}
+              <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
+                <Database className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Firebase: vitallens-38da2</span>
+              </div>
+
+              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-50 text-cyan-800 text-xs font-bold border border-cyan-200">
+                <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
                 <span>Zero AI Hallucination Guard</span>
               </div>
             </div>
           </header>
 
-          {/* Active Tab Body */}
+          {/* Active Tab Body or Grid All Tabs View */}
           <main className="p-4 sm:p-8 max-w-6xl w-full mx-auto">
-            {activeTab === "dashboard" && (
-              <DashboardTab 
-                user={user} 
-                setActiveTab={setActiveTab} 
-                emergencyProfile={emergencyProfile} 
-              />
-            )}
-            {activeTab === "timeline" && (
-              <TimelineTab setActiveTab={setActiveTab} />
-            )}
-            {activeTab === "emergency" && (
-              <EmergencyProfileTab user={user} />
-            )}
-            {activeTab === "beacon" && (
-              <BeaconTab user={user} setActiveTab={setActiveTab} />
-            )}
-            {activeTab === "reminders" && (
-              <MedicineReminderTab />
+            {viewMode === "grid" ? (
+              
+              /* GRID ALL TABS OVERVIEW */
+              <div className="space-y-6 animate-in fade-in">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-5 rounded-3xl bg-gradient-to-r from-[#0b192c] to-[#1e293b] text-white shadow-md">
+                  <div>
+                    <span className="text-[10px] font-bold tracking-widest text-[#00c4d9] uppercase">
+                      Overview Dashboard
+                    </span>
+                    <h3 className="text-xl font-extrabold mt-0.5">All 5 Health Thread Systems</h3>
+                    <p className="text-xs text-slate-300 mt-1">
+                      Click any card below to launch the dedicated full-screen tab.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 rounded-full bg-white/10 text-xs font-medium border border-white/15">
+                      5 Active Modules
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  
+                  {/* CARD 1: DASHBOARD */}
+                  <div 
+                    onClick={() => { setActiveTab("dashboard"); setViewMode("tabs"); }}
+                    className="p-6 rounded-3xl bg-white border border-slate-200 hover:border-cyan-400 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-10 h-10 rounded-2xl bg-cyan-50 text-[#0077b6] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                        <LayoutDashboard className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-bold text-cyan-600 uppercase tracking-wider">Tab 1</span>
+                      <h4 className="text-lg font-extrabold text-slate-900 mt-0.5 group-hover:text-[#0077b6] transition-colors">
+                        Patient Dashboard
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                        Live allergies tracking, attending care doctors, day-to-day Lumi AI diagnoses, and clinical document upload with Groq OCR.
+                      </p>
+                    </div>
+
+                    <div className="pt-5 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-[#0077b6]">
+                      <span>Open Dashboard</span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+
+                  {/* CARD 2: LIFELONG TIMELINE */}
+                  <div 
+                    onClick={() => { setActiveTab("timeline"); setViewMode("tabs"); }}
+                    className="p-6 rounded-3xl bg-white border border-slate-200 hover:border-sky-400 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-10 h-10 rounded-2xl bg-sky-50 text-[#028090] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                        <History className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-bold text-sky-600 uppercase tracking-wider">Tab 2</span>
+                      <h4 className="text-lg font-extrabold text-slate-900 mt-0.5 group-hover:text-[#028090] transition-colors">
+                        Lifelong Medical Timeline
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                        Date-to-date disease history. Drill down into attending physicians, uploaded clinical records, prescribed medicines & dosages, and surgeries.
+                      </p>
+                    </div>
+
+                    <div className="pt-5 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-[#028090]">
+                      <span>Open Timeline</span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+
+                  {/* CARD 3: EMERGENCY PROFILE & QR */}
+                  <div 
+                    onClick={() => { setActiveTab("emergency"); setViewMode("tabs"); }}
+                    className="p-6 rounded-3xl bg-white border border-slate-200 hover:border-red-400 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-10 h-10 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                        <ShieldAlert className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Tab 3</span>
+                      <h4 className="text-lg font-extrabold text-slate-900 mt-0.5 group-hover:text-red-600 transition-colors">
+                        Emergency Profile & QR
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                        Medical alert card with Blood Type, Allergies, and ICE contacts. Includes printable / PDF exportable scannable QR code.
+                      </p>
+                    </div>
+
+                    <div className="pt-5 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-red-600">
+                      <span>Open Emergency Card</span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+
+                  {/* CARD 4: BEACON (LUMI HARDWARE) */}
+                  <div 
+                    onClick={() => { setActiveTab("beacon"); setViewMode("tabs"); }}
+                    className="p-6 rounded-3xl bg-white border border-slate-200 hover:border-teal-400 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between md:col-span-2 lg:col-span-2"
+                  >
+                    <div>
+                      <div className="w-10 h-10 rounded-2xl bg-teal-50 text-[#00a896] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                        <Bot className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-bold text-teal-600 uppercase tracking-wider">Tab 4 (Hardware Subhead)</span>
+                      <h4 className="text-lg font-extrabold text-slate-900 mt-0.5 group-hover:text-[#00a896] transition-colors">
+                        Beacon (Lumi Hardware powered by Groq & Deepgram)
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                        Photorealistic robot face with giant camera eyes and lifelike blinking. Supports "Wake Up Lumi", "Camera Lumi" with thumbs-up capture, and "Emergency Lumi" acute video triage.
+                      </p>
+                    </div>
+
+                    <div className="pt-5 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-[#00a896]">
+                      <span>Launch Beacon Hardware</span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+
+                  {/* CARD 5: MEDICINE REMINDER */}
+                  <div 
+                    onClick={() => { setActiveTab("reminders"); setViewMode("tabs"); }}
+                    className="p-6 rounded-3xl bg-white border border-slate-200 hover:border-amber-400 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+                  >
+                    <div>
+                      <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                        <AlarmClock className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Tab 5</span>
+                      <h4 className="text-lg font-extrabold text-slate-900 mt-0.5 group-hover:text-amber-600 transition-colors">
+                        Medicine Reminder Alarms
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+                        Deterministic scheduled alarms ("Which time" → "What to say" → "Everyday and everyweek"). Rings real Web Audio chimes at the exact minute with zero hallucination.
+                      </p>
+                    </div>
+
+                    <div className="pt-5 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-amber-600">
+                      <span>Open Alarms</span>
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+            ) : (
+              
+              /* SINGLE TAB VIEW */
+              <>
+                {activeTab === "dashboard" && (
+                  <DashboardTab 
+                    user={user} 
+                    setActiveTab={setActiveTab} 
+                    emergencyProfile={emergencyProfile} 
+                  />
+                )}
+                {activeTab === "timeline" && (
+                  <TimelineTab setActiveTab={setActiveTab} />
+                )}
+                {activeTab === "emergency" && (
+                  <EmergencyProfileTab user={user} />
+                )}
+                {activeTab === "beacon" && (
+                  <BeaconTab user={user} setActiveTab={setActiveTab} />
+                )}
+                {activeTab === "reminders" && (
+                  <MedicineReminderTab />
+                )}
+              </>
             )}
           </main>
         </div>
-
       </div>
-
     </div>
   );
 }
+
+
