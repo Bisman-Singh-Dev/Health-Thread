@@ -2,8 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { auth, db } from "@/lib/firebase";
-import { doc, updateDoc } from "firebase/firestore";
+import { getActiveUser, setActiveUser } from "@/lib/vaultStore";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ArrowLeft, Camera, RefreshCcw, Check, ScanLine } from "lucide-react";
 
@@ -102,12 +101,13 @@ export default function OnboardingPage() {
   };
 
   const submitAnalysis = async () => {
-    if (!photoDataUrl || !auth.currentUser) return;
+    const currentUser = getActiveUser();
+    if (!photoDataUrl || !currentUser) return;
     setIsAnalyzing(true);
     setError("");
 
     try {
-      const uid = auth.currentUser.uid;
+      const uid = currentUser.id;
       const timestamp = Date.now();
       
       // Call Next.js API directly with the base64 image
@@ -127,24 +127,10 @@ export default function OnboardingPage() {
       const data = await res.json();
       const analysisResult = data.analysis;
 
-      // Save the scan result to Firestore
-      const { setDoc } = await import("firebase/firestore");
-      const scanRef = doc(db, "users", uid, "scans", `scan_${timestamp}`);
-      await setDoc(scanRef, {
-        capturedAt: new Date(timestamp).toISOString(),
-        flaggedConditions: analysisResult.flagged_conditions || [],
-        personalizedPlan: analysisResult.personalized_plan || [],
-        modelSourcesUsed: ["gemini-2.5-flash"],
-        confidenceNote: analysisResult.confidence_note || "",
-        disclaimer: analysisResult.disclaimer || ""
-      });
-
-      // Update user doc onboarding status
-      await updateDoc(doc(db, "users", uid), {
-        age: parseInt(age),
-        smokingStatus: isAdult ? smokingStatus : "Underage",
-        phoneNumber,
-        onboardingComplete: true
+      // Update active user state and vaultStore
+      await setActiveUser({
+        ...currentUser,
+        phoneNumber: phoneNumber || currentUser.phoneNumber
       });
 
       // Redirect to dashboard

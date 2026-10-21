@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { auth } from "@/lib/firebase";
 import { useRouter } from "next/navigation";
 import { 
   LayoutDashboard, 
@@ -35,7 +34,7 @@ import TimelineTab from "./tabs/TimelineTab";
 import EmergencyProfileTab from "./tabs/EmergencyProfileTab";
 import BeaconTab from "./tabs/BeaconTab";
 import MedicineReminderTab from "./tabs/MedicineReminderTab";
-import { getActiveUser, getEmergencyProfile, VaultUser, EmergencyMedicalProfile } from "@/lib/vaultStore";
+import { getActiveUser, getEmergencyProfile, VaultUser, EmergencyMedicalProfile, clearActiveUser } from "@/lib/vaultStore";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -74,12 +73,7 @@ export default function DashboardPage() {
   }, []);
 
   const handleLogout = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("vitallens_active_user");
-    }
-    try {
-      auth.signOut();
-    } catch(e) {}
+    clearActiveUser();
     router.push("/login");
   };
 
@@ -99,7 +93,7 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-[#0b192c] flex flex-col items-center justify-center text-white select-none">
         <div className="w-8 h-8 border-3 border-cyan-400 border-t-transparent rounded-full animate-spin mb-3" />
-        <p className="text-xs text-cyan-200 font-medium">Connecting to HealthThread Vault & Firebase...</p>
+        <p className="text-xs text-cyan-200 font-medium">Connecting to HealthThread Vault & Python Engine...</p>
       </div>
     );
   }
@@ -323,10 +317,10 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              {/* FIREBASE DATABASE LIVE INDICATOR */}
+              {/* PYTHON DATABASE LIVE INDICATOR */}
               <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
                 <Database className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Firebase: vitallens-38da2</span>
+                <span>DB: users_data.py</span>
               </div>
 
               <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-50 text-cyan-800 text-xs font-bold border border-cyan-200">

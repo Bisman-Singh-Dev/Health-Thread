@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { auth, db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { getActiveUser } from "@/lib/vaultStore";
 import { ArrowLeft, CheckCircle2, ShieldAlert, User, Activity } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -21,22 +20,19 @@ export default function PersonalizedPlanPage() {
 
     const fetchPlan = async () => {
       try {
-        const currentUser = auth.currentUser;
+        const currentUser = getActiveUser();
         if (!currentUser) {
           router.push("/login");
           return;
         }
-
-        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-        const userData = userDoc.exists() ? userDoc.data() : {};
 
         const res = await fetch("/api/generate-plan", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             condition,
-            age: userData.age,
-            smokingStatus: userData.smokingStatus,
+            age: (currentUser as any).age,
+            smokingStatus: (currentUser as any).smokingStatus,
           }),
         });
 

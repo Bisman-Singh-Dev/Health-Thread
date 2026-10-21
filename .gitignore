@@ -40,6 +40,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+
 .vercel
 
 certificates

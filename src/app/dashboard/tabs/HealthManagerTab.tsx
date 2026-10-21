@@ -1,8 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { addDoc, collection } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { GestureRecognizer, FilesetResolver } from "@mediapipe/tasks-vision";
 import CuteNeonEyes, { EyeState } from "@/components/CuteNeonEyes";
 import { ArrowLeft } from "lucide-react";
@@ -140,19 +138,6 @@ export default function HealthManagerTab({ user, setActiveTab }: { user: any, se
 
   const saveAlarm = async (message: string, time: string, frequency: string) => {
     const days = frequency.includes("week") ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["Everyday"];
-    if (user && user.id !== "guest_user") {
-      try {
-        await addDoc(collection(db, "users", user.id, "reminders"), {
-          text: message,
-          timeOfDay: time,
-          frequency: days.includes("Everyday") ? "daily" : "weekly",
-          active: true,
-          createdAt: new Date().toISOString()
-        });
-      } catch (err) {
-        console.error("Firestore save error:", err);
-      }
-    }
     
     const existing = localStorage.getItem("roboDocAlarms");
     const alarms = existing ? JSON.parse(existing) : [];

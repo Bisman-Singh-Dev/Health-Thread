@@ -1,24 +1,6 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
-import { getStorage } from "firebase/storage";
-
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
-};
-
-// Only initialize if we have an API key, otherwise mock it to prevent crashes
-const app = process.env.NEXT_PUBLIC_FIREBASE_API_KEY 
-  ? (!getApps().length ? initializeApp(firebaseConfig) : getApp())
-  : initializeApp({ apiKey: "mock-key", projectId: "mock-project" }, "mock");
-
-export const auth = getAuth(app);
-export const googleProvider = new GoogleAuthProvider();
-export const db = getFirestore(app);
-export const storage = getStorage(app);
+// Firebase decommissioned in favor of Python Database Engine (users_data.py)
+// Kept for backward compatibility if any third-party references exist
+export const auth = null as any;
+export const googleProvider = null as any;
+export const db = null as any;
+export const storage = null as any;

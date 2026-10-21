@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import { User, Phone, Trash2, Eye, EyeOff, Lock, CheckCircle2, AlertCircle, KeyRound, ShieldAlert, Sparkles } from "lucide-react";
-import { doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore";
-import { updatePassword, updateProfile } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
+import { setActiveUser, clearActiveUser } from "@/lib/vaultStore";
 
 export default function ProfileTab({ user }: { user: any }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -28,33 +26,14 @@ export default function ProfileTab({ user }: { user: any }) {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      if (user.id && user.id !== "guest_user") {
-        const userRef = doc(db, "users", user.id);
-        await updateDoc(userRef, {
-          displayName: displayName.trim(),
-          age: parseInt(formData.age) || 0,
-          smokingStatus: formData.smokingStatus,
-          phoneNumber: formData.phoneNumber
-        });
-      }
-
-      if (auth.currentUser) {
-        await updateProfile(auth.currentUser, { displayName: displayName.trim() });
-      }
-
-      if (typeof window !== "undefined") {
-        const activeUser = JSON.parse(localStorage.getItem("vitallens_active_user") || "{}");
-        const updated = {
-          ...activeUser,
-          displayName: displayName.trim(),
-          age: formData.age,
-          smokingStatus: formData.smokingStatus,
-          phoneNumber: formData.phoneNumber
-        };
-        localStorage.setItem("vitallens_active_user", JSON.stringify(updated));
-        window.dispatchEvent(new Event("vitallens_user_updated"));
-      }
-
+      const updated = {
+        ...user,
+        displayName: displayName.trim(),
+        age: formData.age,
+        smokingStatus: formData.smokingStatus,
+        phoneNumber: formData.phoneNumber
+      };
+      await setActiveUser(updated);
       setIsEditing(false);
     } catch (err) {
       console.error("Failed to update profile", err);
@@ -81,62 +60,32 @@ export default function ProfileTab({ user }: { user: any }) {
     setIsLinkingPassword(true);
 
     try {
-      if (auth.currentUser) {
-        try {
-          await updatePassword(auth.currentUser, passwordInput);
-        } catch (authErr: any) {
-          console.warn("Firebase updatePassword notice:", authErr.message);
-        }
+      if (user.email) {
+        await fetch("/api/auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "sync",
+            email: user.email,
+            updates: { password: passwordInput }
+          })
+        });
       }
 
-      if (user.id && user.id !== "guest_user") {
-        try {
-          await setDoc(doc(db, "users", user.id), {
-            passwordLinked: true,
-            updatedAt: new Date().toISOString()
-          }, { merge: true });
-        } catch (dbErr) {
-          console.warn("Firestore password link notice:", dbErr);
-        }
-      }
-
-      if (typeof window !== "undefined") {
-        const activeUser = JSON.parse(localStorage.getItem("vitallens_active_user") || "{}");
-        const updated = {
-          ...activeUser,
-          id: user.id || "member_user",
-          displayName: displayName || user.displayName || "Member",
-          email: user.email || "member@healththread.global",
-          passwordLinked: true,
-          password: passwordInput,
-        };
-        localStorage.setItem("vitallens_active_user", JSON.stringify(updated));
-        window.dispatchEvent(new Event("vitallens_user_updated"));
-      }
-
-      setPasswordSuccessMessage("Password successfully linked to your account! You can now log in using this password.");
+      setPasswordSuccessMessage("Password successfully updated in your vault! You can now log in using this password.");
       setPasswordInput("");
       setConfirmPasswordInput("");
     } catch (err: any) {
-      setPasswordErrorMessage(err.message || "Failed to link password. Please try again.");
+      setPasswordErrorMessage(err.message || "Failed to update password. Please try again.");
     } finally {
       setIsLinkingPassword(false);
     }
   };
 
   const handleDeleteData = async () => {
-    try {
-      if (user.id && user.id !== "guest_user") {
-        await deleteDoc(doc(db, "users", user.id));
-      }
-      if (typeof window !== "undefined") {
-        localStorage.removeItem("vitallens_active_user");
-        localStorage.removeItem("vitallens_emergency_profile");
-        window.dispatchEvent(new Event("vitallens_user_updated"));
-        window.location.href = "/login";
-      }
-    } catch (err) {
-      console.error("Failed to delete account", err);
+    clearActiveUser();
+    if (typeof window !== "undefined") {
+      window.location.href = "/login";
     }
   };
 
