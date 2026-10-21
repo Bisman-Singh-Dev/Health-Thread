@@ -48,6 +48,8 @@ export default function BeaconTab({
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [lastSpokenReply, setLastSpokenReply] = useState<string>("");
+  const [micAudioLevel, setMicAudioLevel] = useState<number>(0);
+  const [micPermissionGranted, setMicPermissionGranted] = useState<boolean>(false);
   
   const recognitionRef = useRef<any>(null);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
@@ -57,6 +59,10 @@ export default function BeaconTab({
   const accumulatedSpeechRef = useRef<string>("");
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const animFrameRef = useRef<number | null>(null);
 
   // Camera State
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -220,9 +226,52 @@ export default function BeaconTab({
     }
   };
 
+  // Initialize Web Audio API Microphone Visualizer
+  const initAudioMeter = async () => {
+    try {
+      if (micStreamRef.current) return;
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micStreamRef.current = stream;
+      setMicPermissionGranted(true);
+
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      const audioCtx = new AudioContextClass();
+      audioContextRef.current = audioCtx;
+
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 64;
+      analyser.smoothingTimeConstant = 0.5;
+      analyserRef.current = analyser;
+
+      const source = audioCtx.createMediaStreamSource(stream);
+      source.connect(analyser);
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+      const updateVolume = () => {
+        if (!analyserRef.current) return;
+        analyserRef.current.getByteFrequencyData(dataArray);
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i];
+        }
+        const avg = sum / dataArray.length;
+        // Normalize 0 to 100
+        const level = Math.min(100, Math.round((avg / 128) * 100));
+        setMicAudioLevel(level);
+        animFrameRef.current = requestAnimationFrame(updateVolume);
+      };
+      updateVolume();
+    } catch (err) {
+      console.warn("Microphone meter initialization notice:", err);
+    }
+  };
+
   // Continuous Wake-Word Voice Listener
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    // Start audio meter for live visual green bars
+    initAudioMeter();
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -241,9 +290,11 @@ export default function BeaconTab({
       const spokenText = currentResult[0].transcript.trim();
       setTranscript(spokenText);
 
-      // If Lumi is currently talking, user speaking triggers interruption!
+      // If Lumi is currently talking, ignore Lumi's own self-echo
       if (isSpeakingRef.current) {
-        if (spokenText.length > 2) {
+        // Only interrupt if user clearly speaks something different or long (>15 chars)
+        const isEcho = spokenText.toLowerCase().includes("waking up") || spokenText.toLowerCase().includes("explain what");
+        if (!isEcho && spokenText.length > 8) {
           interruptLumi();
         }
         return;
@@ -251,22 +302,27 @@ export default function BeaconTab({
 
       const lower = spokenText.toLowerCase();
 
-      // Check for voice wake/trigger commands first
-      if (lower.includes("wake up") || lower.includes("hey lumi") || lower.includes("wake lumi")) {
-        handleWakeUpLumi();
-        return;
-      }
-      if (lower.includes("camera lumi") || lower.includes("open camera") || lower.includes("take photo")) {
-        handleOpenCamera("standard");
-        return;
-      }
-      if (lower.includes("emergency lumi") || lower.includes("call ambulance") || (lower.includes("emergency") && !isCollectingRef.current)) {
-        handleOpenCamera("emergency");
-        return;
+      // Check for voice wake/trigger commands first (only when NOT collecting symptom explanation)
+      if (!isCollectingRef.current) {
+        if (lower.includes("wake up") || lower.includes("hey lumi") || lower.includes("wake lumi")) {
+          handleWakeUpLumi();
+          return;
+        }
+        if (lower.includes("camera lumi") || lower.includes("open camera") || lower.includes("take photo")) {
+          handleOpenCamera("standard");
+          return;
+        }
+        if (lower.includes("emergency lumi") || lower.includes("call ambulance") || lower.includes("emergency")) {
+          handleOpenCamera("emergency");
+          return;
+        }
       }
 
       // If user is currently explaining symptoms:
       if (isCollectingRef.current) {
+        // Ignore self-echo words from Lumi's prompt
+        if (lower.includes("waking up please explain")) return;
+
         // Accumulate speech
         if (currentResult.isFinal) {
           const updated = (accumulatedSpeechRef.current + " " + spokenText).trim();
@@ -274,7 +330,7 @@ export default function BeaconTab({
           accumulatedSpeechRef.current = updated;
         }
 
-        // Reset silence timer: Wait for 3.0 seconds of silence before finalizing!
+        // Reset silence timer: Wait for 3.5 seconds of silence before finalizing!
         resetSilenceDebounce();
       }
     };
@@ -301,10 +357,17 @@ export default function BeaconTab({
       try { recognition.stop(); } catch (e) {}
       if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
       if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (audioContextRef.current) {
+        try { audioContextRef.current.close(); } catch(e) {}
+      }
+      if (micStreamRef.current) {
+        micStreamRef.current.getTracks().forEach(t => t.stop());
+      }
     };
   }, []);
 
-  // Silence Debounce Timer: Wait 3.0 seconds after user stops speaking before diagnosing
+  // Silence Debounce Timer: Wait 3.5 seconds after user stops speaking before diagnosing
   const resetSilenceDebounce = () => {
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
@@ -322,7 +385,7 @@ export default function BeaconTab({
 
     silenceTimerRef.current = setTimeout(() => {
       finalizeAndDiagnose();
-    }, 3200);
+    }, 3600);
   };
 
   // Finalize Explanation and Trigger Diagnosis
@@ -344,10 +407,15 @@ export default function BeaconTab({
 
   // Command 1: "Wake Up Lumi" Flow
   const handleWakeUpLumi = () => {
+    // If audio meter isn't active, activate it
+    initAudioMeter();
+
     // Clear any previous buffers
     setAccumulatedSpeech("");
     accumulatedSpeechRef.current = "";
     setTranscript("");
+    setIsCollectingExplanation(false);
+    isCollectingRef.current = false;
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     setSilenceCountdown(null);
@@ -356,11 +424,22 @@ export default function BeaconTab({
     setLumiState("speaking");
 
     speakWithLumi("Waking Up! Please explain what happened.", () => {
-      // AFTER Lumi finishes greeting, start listening for symptoms with full patience!
+      // AFTER Lumi finishes greeting completely:
+      // Clear transcript so Lumi's own greeting isn't captured
+      setTranscript("");
+      setAccumulatedSpeech("");
+      accumulatedSpeechRef.current = "";
+      
+      // Start listening for symptoms with full patience
       setLumiState("listening");
       setIsCollectingExplanation(true);
       isCollectingRef.current = true;
       setStatusMessage("Listening... Explain what happened. Lumi will wait until you finish.");
+
+      // Ensure recognition is running
+      if (recognitionRef.current) {
+        try { recognitionRef.current.start(); } catch(e) {}
+      }
     });
   };
 
@@ -495,16 +574,27 @@ export default function BeaconTab({
     return () => cancelAnimationFrame(animId);
   }, [isCameraActive, capturedImage, gestureRecognizer]);
 
-  // Capture Image from Webcam
+  // Capture Image from Webcam (instant downscale to max 400px for sub-second Groq analysis)
   const takeSnapshot = () => {
     if (!videoRef.current) return;
+    const origW = videoRef.current.videoWidth || 640;
+    const origH = videoRef.current.videoHeight || 480;
+
+    // Downscale so maximum dimension is 400px
+    const maxDim = 400;
+    const scale = Math.min(maxDim / origW, maxDim / origH, 1);
+    const targetW = Math.round(origW * scale);
+    const targetH = Math.round(origH * scale);
+
     const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth || 640;
-    canvas.height = videoRef.current.videoHeight || 480;
+    canvas.width = targetW;
+    canvas.height = targetH;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+    ctx.drawImage(videoRef.current, 0, 0, targetW, targetH);
+    
+    // 0.65 quality drops payload size from ~3MB to ~25KB (100x lighter, instant upload)
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.65);
     setCapturedImage(dataUrl);
 
     // Stop camera video stream
@@ -617,13 +707,41 @@ export default function BeaconTab({
       
       {/* 1. TOP MINIMALIST STATUS PILL */}
       <div className="w-full max-w-2xl flex items-center justify-between pt-2">
-        <div className="flex items-center gap-2">
-          <span className={`w-2.5 h-2.5 rounded-full ${
-            lumiState === "emergency" ? "bg-red-500 animate-ping" : lumiState === "listening" ? "bg-emerald-500 animate-pulse" : lumiState === "speaking" ? "bg-cyan-500 animate-bounce" : "bg-sky-400"
-          }`} />
-          <span className="text-xs font-bold text-slate-800 tracking-wide uppercase">
-            {lumiState === "listening" ? "Listening..." : lumiState === "speaking" ? "Lumi Speaking..." : lumiState === "thinking" ? "Reasoning..." : "Lumi Ready"}
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className={`w-2.5 h-2.5 rounded-full ${
+              lumiState === "emergency" ? "bg-red-500 animate-ping" : lumiState === "listening" ? "bg-emerald-500 animate-pulse" : lumiState === "speaking" ? "bg-cyan-500 animate-bounce" : "bg-sky-400"
+            }`} />
+            <span className="text-xs font-bold text-slate-800 tracking-wide uppercase">
+              {lumiState === "listening" ? "Listening..." : lumiState === "speaking" ? "Lumi Speaking..." : lumiState === "thinking" ? "Reasoning..." : "Lumi Ready"}
+            </span>
+          </div>
+
+          {/* Live Mic Equalizer Visualizer */}
+          <button 
+            type="button"
+            onClick={initAudioMeter}
+            title={micPermissionGranted ? `Microphone Active (Volume: ${micAudioLevel}%)` : "Click to test/grant microphone access"}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-50 hover:bg-slate-100 border border-slate-200 transition-colors shadow-2xs"
+          >
+            <Mic className={`w-3 h-3 ${micAudioLevel > 8 ? "text-emerald-500 animate-pulse" : "text-slate-400"}`} />
+            <span className="text-[10px] font-bold text-slate-700 hidden sm:inline">
+              {micAudioLevel > 8 ? "Hearing You" : "Mic Active"}
+            </span>
+            <div className="flex items-end gap-0.5 h-3 w-5">
+              {[10, 25, 45, 70].map((threshold, idx) => (
+                <span
+                  key={idx}
+                  className={`w-1 rounded-full transition-all duration-75 ${
+                    micAudioLevel >= threshold ? "bg-emerald-500" : "bg-slate-300"
+                  }`}
+                  style={{
+                    height: micAudioLevel >= threshold ? `${Math.max(30, (micAudioLevel / 100) * 100)}%` : "25%"
+                  }}
+                />
+              ))}
+            </div>
+          </button>
         </div>
 
         {/* Interruption Helper if Lumi is talking */}

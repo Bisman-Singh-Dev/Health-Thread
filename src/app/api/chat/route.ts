@@ -53,13 +53,15 @@ EMERGENCY_REDIRECT: https://www.youtube.com/embed/AhANvBB9hz0?autoplay=1`;
       },
       body: JSON.stringify({
         model: "openai/gpt-oss-120b",
-        temperature: 0.3,
+        temperature: 0.2,
+        max_tokens: 320,
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ]
       })
     });
+
 
     if (groqResponse.ok) {
       const data = await groqResponse.json();
