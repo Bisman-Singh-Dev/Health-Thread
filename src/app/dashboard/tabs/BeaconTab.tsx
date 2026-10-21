@@ -845,64 +845,6 @@ export default function BeaconTab({
         )}
       </div>
 
-      {/* 3. BOTTOM FLOATING ACTION CONTROLS */}
-      <div className="w-full max-w-xl pb-2 flex flex-col items-center gap-3">
-        
-        {/* The 3 Core Voice Triggers */}
-        <div className="flex items-center justify-center gap-2.5 sm:gap-4 flex-wrap">
-          <button
-            type="button"
-            onClick={handleWakeUpLumi}
-            className="px-4 sm:px-5 py-2.5 rounded-2xl bg-gradient-to-r from-[#00b4d8] to-[#0077b6] hover:opacity-95 text-white font-extrabold text-xs sm:text-sm shadow-md transition-all active:scale-95 flex items-center gap-2"
-          >
-            <Mic className="w-4 h-4" />
-            <span>"Wake Up Lumi"</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleOpenCamera("standard")}
-            className="px-4 sm:px-5 py-2.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs sm:text-sm shadow-md transition-all active:scale-95 flex items-center gap-2"
-          >
-            <Camera className="w-4 h-4 text-cyan-300" />
-            <span>"Camera Lumi"</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleOpenCamera("emergency")}
-            className="px-4 sm:px-5 py-2.5 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-extrabold text-xs sm:text-sm shadow-md transition-all active:scale-95 flex items-center gap-2"
-          >
-            <AlertTriangle className="w-4 h-4" />
-            <span>"Emergency Lumi"</span>
-          </button>
-        </div>
-
-        {/* Quick Symptoms Prompt Chips */}
-        <div className="flex flex-wrap items-center justify-center gap-2 text-xs pt-1">
-          <button
-            type="button"
-            onClick={() => handleSymptomInput("I have a high fever, sore throat, and severe fatigue.")}
-            className="px-3 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
-          >
-            Fever & Sore Throat
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSymptomInput("Swollen knee joint with pain after a fall.")}
-            className="px-3 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
-          >
-            Swollen Knee
-          </button>
-          <button
-            type="button"
-            onClick={() => handleSymptomInput("Persistent dry cough, mild wheezing, and chest tightness.")}
-            className="px-3 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium transition-colors"
-          >
-            Chest Tightness
-          </button>
-        </div>
-      </div>
 
       {/* 4. DIAGNOSIS POPUP DRAWER */}
       <AnimatePresence>

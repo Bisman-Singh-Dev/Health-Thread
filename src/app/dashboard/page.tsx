@@ -18,7 +18,6 @@ import {
   User, 
   HeartPulse,
   LayoutGrid,
-  Database,
   ArrowRight,
   ExternalLink,
   QrCode,
@@ -285,48 +284,6 @@ export default function DashboardPage() {
               <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
                 {getPageTitle()}
               </h2>
-            </div>
-
-
-            <div className="flex items-center gap-2.5 sm:gap-4">
-              
-              {/* TABS VS GRID VIEW SWITCHER */}
-              <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setViewMode("tabs")}
-                  className={`px-3 py-1 rounded-lg transition-all ${
-                    viewMode === "tabs"
-                      ? "bg-white text-slate-900 shadow-xs font-bold"
-                      : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  Single Tab
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode("grid")}
-                  className={`px-3 py-1 rounded-lg transition-all flex items-center gap-1.5 ${
-                    viewMode === "grid"
-                      ? "bg-gradient-to-r from-[#00b4d8] to-[#0077b6] text-white shadow-xs font-bold"
-                      : "text-slate-500 hover:text-slate-800"
-                  }`}
-                >
-                  <LayoutGrid className="w-3.5 h-3.5" />
-                  <span>Grid All Tabs</span>
-                </button>
-              </div>
-
-              {/* PYTHON DATABASE LIVE INDICATOR */}
-              <div className="hidden lg:flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 text-xs font-bold border border-emerald-200">
-                <Database className="w-3.5 h-3.5 text-emerald-600" />
-                <span>DB: users_data.py</span>
-              </div>
-
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-50 text-cyan-800 text-xs font-bold border border-cyan-200">
-                <span className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
-                <span>Zero AI Hallucination Guard</span>
-              </div>
             </div>
           </header>
 
