@@ -1,7 +1,7 @@
 {
-  "name": "VitalLens - AI Health & Disease Insight Platform",
-  "short_name": "VitalLens",
-  "description": "AI-powered diagnostic scans, real-time vital tracking, and personalized clinical health insights.",
+  "name": "HealthThread — Universal Connected Medical Lifeline",
+  "short_name": "HealthThread",
+  "description": "Your complete medical life in one connected thread. Vault clinical records, Beacon AI triage, and lifelong continuity.",
   "start_url": "/",
   "id": "/",
   "display": "standalone",
@@ -10,8 +10,8 @@
     "minimal-ui",
     "browser"
   ],
-  "background_color": "#050507",
-  "theme_color": "#ff3366",
+  "background_color": "#ffffff",
+  "theme_color": "#00a896",
   "orientation": "any",
   "scope": "/",
   "lang": "en",
