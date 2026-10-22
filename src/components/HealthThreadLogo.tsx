@@ -3,7 +3,7 @@
 import React from "react";
 
 export function HealthThreadLogo({ 
-  className = "h-14 sm:h-16", 
+  className = "h-10 sm:h-11", 
   showText = true, 
   subtitle,
   isDark = false
@@ -14,9 +14,9 @@ export function HealthThreadLogo({
   isDark?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3.5 select-none">
+    <div className="flex items-center gap-3 select-none">
       {/* High-Resolution Brand Logo from User Asset */}
-      <div className={`relative ${className} shrink-0 flex items-center`}>
+      <div className={`relative ${className} shrink-0 flex items-center justify-center`}>
         <img 
           src="/images/health-thread-logo.png" 
           alt="HealthThread Logo" 
@@ -24,11 +24,25 @@ export function HealthThreadLogo({
         />
       </div>
 
-      {subtitle && (
-        <div className={`text-[9px] sm:text-[10px] font-bold tracking-[0.2em] uppercase pl-2 border-l border-slate-300 ${
-          isDark ? "text-slate-300 border-slate-700" : "text-slate-500"
-        }`}>
-          {subtitle}
+      {showText && (
+        <div className="flex flex-col justify-center leading-none text-left">
+          <div className="flex flex-col leading-[1.05] tracking-tight">
+            <span className={`text-base sm:text-lg font-black tracking-tight ${
+              isDark ? "text-white" : "text-[#061d30]"
+            }`}>
+              Health
+            </span>
+            <span className="text-base sm:text-lg font-black tracking-tight text-[#00a896]">
+              Thread
+            </span>
+          </div>
+          {subtitle && (
+            <div className={`text-[9px] font-bold tracking-[0.2em] uppercase mt-1 ${
+              isDark ? "text-slate-400" : "text-slate-500"
+            }`}>
+              {subtitle}
+            </div>
+          )}
         </div>
       )}
     </div>
