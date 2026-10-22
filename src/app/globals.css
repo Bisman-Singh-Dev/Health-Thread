@@ -88,3 +88,58 @@ body {
   color: #334155;
   border: 1px solid #e2e8f0;
 }
+
+/* Print Only the Emergency Medical Card */
+@media print {
+  @page {
+    margin: 1cm;
+    size: auto;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Hide entire application layout (navbars, sidebar, headers, buttons, footers) */
+  header,
+  aside,
+  nav,
+  footer,
+  button,
+  .no-print,
+  #emergency-action-bar {
+    display: none !important;
+    visibility: hidden !important;
+  }
+
+  /* Make sure the main layout wrapper does not constrain or hide printable content */
+  div, main {
+    overflow: visible !important;
+  }
+
+  /* Hide everything outside of the printable emergency card */
+  body * {
+    visibility: hidden;
+  }
+
+  #printable-emergency-card,
+  #printable-emergency-card * {
+    visibility: visible !important;
+  }
+
+  #printable-emergency-card {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-shadow: none !important;
+    border: 2px solid #ef4444 !important;
+    border-radius: 1.5rem !important;
+    padding: 1.5rem !important;
+    page-break-inside: avoid !important;
+  }
+}

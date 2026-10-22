@@ -91,7 +91,10 @@ export default function EmergencyProfileTab({ user }: { user?: any }) {
       )}
 
       {/* ACTION BAR */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+      <div 
+        id="emergency-action-bar" 
+        className="no-print flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-200"
+      >
         <div>
           <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
             <ShieldAlert className="w-6 h-6 text-red-500" />
