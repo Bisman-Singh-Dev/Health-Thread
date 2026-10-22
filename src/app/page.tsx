@@ -84,7 +84,7 @@ export default function LandingPage() {
 
       {/* NAVIGATION HEADER */}
       <header className="sticky top-0 z-50 bg-white/85 backdrop-blur-xl border-b border-slate-200/80 transition-all">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-24 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3">
             <HealthThreadLogo showText={true} />
           </Link>
@@ -342,15 +342,15 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ANIMATION 2: PIXEL TRANSITION FEATURE COMPARISON */}
+      {/* PIXEL TRANSITION FEATURE COMPARISON */}
       <section className="py-16 sm:py-24 bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             
             <div className="lg:col-span-6 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-50 border border-purple-200 text-purple-700 text-xs font-bold">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Pixelated Health Shifter</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-50 border border-cyan-200 text-[#0077b6] text-xs font-bold">
+                <Sparkles className="w-3.5 h-3.5 text-[#00b4d8]" />
+                <span>24/7 Care Continuity</span>
               </div>
               <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight leading-tight">
                 Hover to Dissolve: <br/>
@@ -359,12 +359,8 @@ export default function LandingPage() {
                 </span>
               </h2>
               <p className="text-sm sm:text-base text-slate-600 leading-relaxed">
-                HealthThread transitions seamlessly between daytime clinical consultations and night-time Beacon home vitals monitoring. Hover or tap the pixel transition card to reveal the underlying medical state.
+                HealthThread transitions seamlessly between daytime clinical consultations and night-time Beacon home vitals monitoring. Hover or tap the interactive card to reveal the underlying medical state.
               </p>
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
-                <p className="font-semibold text-slate-900 mb-1">Animation Specs:</p>
-                <p>Grid Size: 10 • Randomness: 0.3 • Pixel Shape: Square • Step Duration: 0.4s • Trigger: Hover</p>
-              </div>
             </div>
 
             {/* ANIMATION 2 CODE EMBED */}
