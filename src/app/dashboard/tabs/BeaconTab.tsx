@@ -13,7 +13,8 @@ import {
   Sparkles,
   CheckCircle2,
   Square,
-  ArrowRight
+  ArrowRight,
+  VolumeX
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GestureRecognizer, FilesetResolver } from "@mediapipe/tasks-vision";
@@ -125,6 +126,7 @@ export default function BeaconTab({
       try { 
         audioPlayerRef.current.pause(); 
         audioPlayerRef.current.currentTime = 0;
+        audioPlayerRef.current.src = "";
       } catch(e) {}
       audioPlayerRef.current = null;
     }
@@ -134,27 +136,31 @@ export default function BeaconTab({
     setIsSpeaking(false);
     isSpeakingRef.current = false;
     setLumiState("listening");
-    setStatusMessage("Lumi was interrupted. Listening to you...");
+    setStatusMessage("Speech stopped. Listening to you...");
   };
 
   // Deepgram TTS Speech Output (Aura-Asteria female voice, clean without asterisks)
   const speakWithLumi = async (text: string, onEnd?: () => void) => {
-    // Stop any playing speech
+    // Stop any previously playing speech
     if (audioPlayerRef.current) {
-      try { audioPlayerRef.current.pause(); } catch(e) {}
+      try { 
+        audioPlayerRef.current.pause(); 
+        audioPlayerRef.current.src = "";
+      } catch(e) {}
       audioPlayerRef.current = null;
     }
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try { window.speechSynthesis.cancel(); } catch(e) {}
     }
 
-    // Clean text thoroughly so no asterisks are ever pronounced
+    // Clean text thoroughly so no asterisks, markdown, or links are ever pronounced
     const cleanSpoken = text
       .replace(/<<([^>>]+)>>/g, "$1")
       .replace(/\*/g, "")
       .replace(/#/g, "")
       .replace(/\[([^\]]+)\]\([^\)]+\)/g, "$1")
       .replace(/EMERGENCY_REDIRECT:[^\n]+/gi, "")
+      .replace(/https?:\/\/\S+/gi, "")
       .trim();
 
     if (!cleanSpoken) {
@@ -167,6 +173,33 @@ export default function BeaconTab({
     setLumiState("speaking");
     setLastSpokenReply(cleanSpoken);
 
+    const fallbackToBrowserSpeech = () => {
+      if (typeof window !== "undefined" && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(cleanSpoken);
+        u.rate = 0.98;
+        u.pitch = 1.05; // Friendly, natural tone
+        u.onend = () => {
+          setIsSpeaking(false);
+          isSpeakingRef.current = false;
+          setLumiState("awake");
+          if (onEnd) onEnd();
+        };
+        u.onerror = () => {
+          setIsSpeaking(false);
+          isSpeakingRef.current = false;
+          setLumiState("awake");
+          if (onEnd) onEnd();
+        };
+        window.speechSynthesis.speak(u);
+      } else {
+        setIsSpeaking(false);
+        isSpeakingRef.current = false;
+        setLumiState("awake");
+        if (onEnd) onEnd();
+      }
+    };
+
     try {
       const res = await fetch("/api/tts", {
         method: "POST",
@@ -176,11 +209,17 @@ export default function BeaconTab({
 
       if (res.ok) {
         const blob = await res.blob();
+        if (blob.size < 100) {
+          fallbackToBrowserSpeech();
+          return;
+        }
+
         const url = URL.createObjectURL(blob);
         const audio = new Audio(url);
         audioPlayerRef.current = audio;
 
         audio.onended = () => {
+          URL.revokeObjectURL(url);
           setIsSpeaking(false);
           isSpeakingRef.current = false;
           setLumiState("awake");
@@ -188,42 +227,19 @@ export default function BeaconTab({
           if (onEnd) onEnd();
         };
         audio.onerror = () => {
-          setIsSpeaking(false);
-          isSpeakingRef.current = false;
-          setLumiState("awake");
+          URL.revokeObjectURL(url);
           audioPlayerRef.current = null;
-          if (onEnd) onEnd();
+          fallbackToBrowserSpeech();
         };
+
         await audio.play();
         return;
+      } else {
+        fallbackToBrowserSpeech();
       }
     } catch (e) {
       console.warn("Lumi TTS audio error:", e);
-    }
-
-    // Fallback to browser high-quality TTS
-    if (typeof window !== "undefined" && "speechSynthesis" in window) {
-      const u = new SpeechSynthesisUtterance(cleanSpoken);
-      u.rate = 1.0;
-      u.pitch = 1.1; // Friendly female pitch
-      u.onend = () => {
-        setIsSpeaking(false);
-        isSpeakingRef.current = false;
-        setLumiState("awake");
-        if (onEnd) onEnd();
-      };
-      u.onerror = () => {
-        setIsSpeaking(false);
-        isSpeakingRef.current = false;
-        setLumiState("awake");
-        if (onEnd) onEnd();
-      };
-      window.speechSynthesis.speak(u);
-    } else {
-      setIsSpeaking(false);
-      isSpeakingRef.current = false;
-      setLumiState("awake");
-      if (onEnd) onEnd();
+      fallbackToBrowserSpeech();
     }
   };
 
@@ -291,42 +307,58 @@ export default function BeaconTab({
       const spokenText = currentResult[0].transcript.trim();
       setTranscript(spokenText);
 
-      // If Lumi is currently talking, check immunity window and allow interruption
-      if (isSpeakingRef.current) {
-        // Immunity window right after speaking starts to prevent old buffered speech from interrupting
-        if (Date.now() < speechImmunityUntilRef.current) {
-          return;
-        }
+      // Clean spoken text: remove punctuation, lowercase, collapse spaces
+      const normalized = spokenText
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
 
-        const lowerEcho = spokenText.toLowerCase();
-        const isEcho = lowerEcho.includes("waking up") || 
-                       lowerEcho.includes("explain what") ||
-                       lowerEcho.includes("according to") ||
-                       lowerEcho.includes("diagnosis") ||
-                       lowerEcho.includes("treat it") ||
-                       lowerEcho.includes("consult a");
+      // Check if user is saying emergency lumi or camera lumi even while speaking
+      const isEmergencyTrigger = 
+        normalized.includes("emergency lumi") || 
+        normalized.includes("emergency room") ||
+        normalized.includes("emergency mode") ||
+        normalized.includes("call ambulance") || 
+        normalized.includes("critical emergency") ||
+        normalized === "emergency";
 
-        // If user clearly speaks to interrupt (not Lumi's own echo)
-        if (!isEcho && spokenText.length > 6) {
-          interruptLumi();
-        }
+      const isCameraTrigger = 
+        normalized.includes("camera lumi") || 
+        normalized.includes("open camera") || 
+        normalized.includes("take photo") ||
+        normalized.includes("start camera") ||
+        normalized.includes("scan photo") ||
+        normalized === "camera";
+
+      const isWakeTrigger = 
+        normalized.includes("wake up") || 
+        normalized.includes("hey lumi") || 
+        normalized.includes("wake lumi") ||
+        normalized.includes("wake up lumi") ||
+        normalized.includes("hello lumi") ||
+        normalized === "lumi";
+
+      // If user issues a direct camera or emergency command, execute immediately!
+      if (isEmergencyTrigger) {
+        handleOpenCamera("emergency");
+        return;
+      }
+      if (isCameraTrigger) {
+        handleOpenCamera("standard");
         return;
       }
 
-      const lower = spokenText.toLowerCase();
+      // If Lumi is currently talking, DO NOT interrupt unless user explicitly says a real phrase
+      if (isSpeakingRef.current) {
+        // While Lumi is speaking her diagnosis, ignore microphone input to prevent background echo cutoffs
+        return;
+      }
 
-      // Check for voice wake/trigger commands first (only when NOT collecting symptom explanation)
+      // Check for voice wake/trigger commands first (when NOT collecting symptom explanation)
       if (!isCollectingRef.current) {
-        if (lower.includes("wake up") || lower.includes("hey lumi") || lower.includes("wake lumi")) {
+        if (isWakeTrigger) {
           handleWakeUpLumi();
-          return;
-        }
-        if (lower.includes("camera lumi") || lower.includes("open camera") || lower.includes("take photo")) {
-          handleOpenCamera("standard");
-          return;
-        }
-        if (lower.includes("emergency lumi") || lower.includes("call ambulance") || lower.includes("emergency")) {
-          handleOpenCamera("emergency");
           return;
         }
       }
@@ -334,7 +366,7 @@ export default function BeaconTab({
       // If user is currently explaining symptoms:
       if (isCollectingRef.current) {
         // Ignore self-echo words from Lumi's prompt
-        if (lower.includes("waking up please explain")) return;
+        if (normalized.includes("waking up please explain") || normalized.includes("waking up")) return;
 
         // Accumulate speech
         if (currentResult.isFinal) {
@@ -514,10 +546,11 @@ export default function BeaconTab({
       setAccumulatedSpeech("");
       accumulatedSpeechRef.current = "";
 
-      const spokenSummary = `According to my diagnosis, you may have ${conditionName}. Here is what to do. ${steps.slice(0, 3).join(". ")}. You should consult a ${specialist}.`;
+      const stepsSpoken = steps.map((s, idx) => `Step ${idx + 1}: ${s}`).join(". ");
+      const spokenSummary = `According to my diagnosis, you may have ${conditionName}. Here is how to treat it. ${stepsSpoken}. For emergency assistance or ambulance, contact ${latestDiagnosis ? latestDiagnosis.emergencyContact : "911 or 112"}. You should consult a ${specialist}.`;
 
       setTimeout(() => {
-        speechImmunityUntilRef.current = Date.now() + 2500;
+        speechImmunityUntilRef.current = Date.now() + 5000;
         speakWithLumi(spokenSummary, () => {
           setLumiState("awake");
           setStatusMessage("Diagnosis saved to Dashboard & Lifelong Timeline.");
@@ -707,10 +740,11 @@ export default function BeaconTab({
       setAccumulatedSpeech("");
       accumulatedSpeechRef.current = "";
 
-      const spokenSummary = `According to my camera scan, ${conditionName}. Here is what to do. ${steps.slice(0, 3).join(". ")}. Please consult a ${specialist}.`;
+      const stepsSpoken = steps.map((s, idx) => `Step ${idx + 1}: ${s}`).join(". ");
+      const spokenSummary = `According to my camera scan, ${conditionName}. Here is how to treat it. ${stepsSpoken}. Emergency contact for ambulance is 911 or 112. Please consult a ${specialist}.`;
 
       setTimeout(() => {
-        speechImmunityUntilRef.current = Date.now() + 2500;
+        speechImmunityUntilRef.current = Date.now() + 5000;
         speakWithLumi(spokenSummary, () => {
           setLumiState("awake");
           setStatusMessage("Photo diagnosis saved to Dashboard & Lifelong Timeline.");
@@ -866,19 +900,33 @@ export default function BeaconTab({
               </div>
 
               <div className="flex items-center gap-2">
-                {lastSpokenReply && (
+                {isSpeaking ? (
                   <button
                     type="button"
-                    onClick={() => speakWithLumi(lastSpokenReply)}
-                    className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition-colors"
+                    onClick={interruptLumi}
+                    className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-md transition-all active:scale-95 animate-pulse"
                   >
-                    <Volume2 className="w-3.5 h-3.5" />
-                    <span>Replay Voice</span>
+                    <VolumeX className="w-4 h-4" />
+                    <span>Stop Speaking</span>
                   </button>
+                ) : (
+                  lastSpokenReply && (
+                    <button
+                      type="button"
+                      onClick={() => speakWithLumi(lastSpokenReply)}
+                      className="px-3 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold flex items-center gap-1 shadow-xs transition-colors"
+                    >
+                      <Volume2 className="w-3.5 h-3.5" />
+                      <span>Replay Voice</span>
+                    </button>
+                  )
                 )}
                 <button
                   type="button"
-                  onClick={() => setLatestDiagnosis(null)}
+                  onClick={() => {
+                    interruptLumi();
+                    setLatestDiagnosis(null);
+                  }}
                   className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
                 >
                   <X className="w-5 h-5" />
