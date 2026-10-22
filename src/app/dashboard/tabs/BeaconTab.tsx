@@ -58,6 +58,7 @@ export default function BeaconTab({
   const isSpeakingRef = useRef<boolean>(false);
   const isCollectingRef = useRef<boolean>(false);
   const accumulatedSpeechRef = useRef<string>("");
+  const transcriptRef = useRef<string>("");
   const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -96,6 +97,10 @@ export default function BeaconTab({
   useEffect(() => {
     accumulatedSpeechRef.current = accumulatedSpeech;
   }, [accumulatedSpeech]);
+
+  useEffect(() => {
+    transcriptRef.current = transcript;
+  }, [transcript]);
 
   // Initialize MediaPipe Gesture Recognizer
   useEffect(() => {
@@ -401,14 +406,18 @@ export default function BeaconTab({
         // Ignore self-echo words from Lumi's prompt
         if (normalized.includes("waking up please explain") || normalized.includes("waking up")) return;
 
-        // Accumulate speech
+        // Immediately update live transcript ref and state
+        transcriptRef.current = spokenText;
+        setTranscript(spokenText);
+
+        // Accumulate speech on final or interim if accumulating
         if (currentResult.isFinal) {
           const updated = (accumulatedSpeechRef.current + " " + spokenText).trim();
           setAccumulatedSpeech(updated);
           accumulatedSpeechRef.current = updated;
         }
 
-        // Reset silence timer: Wait for 3.5 seconds of silence before finalizing!
+        // Automatic Self-Diagnosis: Reset silence timer. After 2.5s of silence, Lumi self-diagnoses automatically!
         resetSilenceDebounce();
       }
     };
@@ -445,7 +454,7 @@ export default function BeaconTab({
     };
   }, []);
 
-  // Silence Debounce Timer: Wait 3.5 seconds after user stops speaking before diagnosing
+  // Silence Debounce Timer: Wait 2.5 seconds of silence before self-diagnosing automatically!
   const resetSilenceDebounce = () => {
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
@@ -459,22 +468,22 @@ export default function BeaconTab({
       } else {
         if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
       }
-    }, 1000);
+    }, 800);
 
     silenceTimerRef.current = setTimeout(() => {
       finalizeAndDiagnose();
-    }, 3600);
+    }, 2600);
   };
 
-  // Finalize Explanation and Trigger Diagnosis
+  // Finalize Explanation and Trigger Diagnosis (Self-diagnose or button click)
   const finalizeAndDiagnose = () => {
     if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
     if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
     setSilenceCountdown(null);
 
-    const fullSymptoms = (accumulatedSpeechRef.current || transcript).trim();
-    if (!fullSymptoms || fullSymptoms.length < 3) {
-      setStatusMessage("Lumi is listening. Please tell me what symptoms you are experiencing.");
+    const fullSymptoms = (accumulatedSpeechRef.current || transcriptRef.current || transcript).trim();
+    if (!fullSymptoms || fullSymptoms.length < 2) {
+      setStatusMessage("Lumi is listening. Please explain what symptoms you are experiencing.");
       return;
     }
 
@@ -580,7 +589,7 @@ export default function BeaconTab({
       accumulatedSpeechRef.current = "";
 
       const stepsSpoken = steps.map((s, idx) => `Step ${idx + 1}: ${s}`).join(". ");
-      const spokenSummary = `According to my diagnosis, you may have ${conditionName}. Here is how to treat it. ${stepsSpoken}. For emergency assistance or ambulance, contact ${latestDiagnosis ? latestDiagnosis.emergencyContact : "911 or 112"}. You should consult a ${specialist}.`;
+      const spokenSummary = `According to my diagnosis, you may have ${conditionName}. Here is how to treat it. ${stepsSpoken}. For emergency assistance or ambulance, contact 911 or 112. You should consult a ${specialist}.`;
 
       setTimeout(() => {
         speechImmunityUntilRef.current = Date.now() + 5000;
