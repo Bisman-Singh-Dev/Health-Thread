@@ -25,9 +25,11 @@ import {
   Activity,
   CheckCircle2,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Download
 } from "lucide-react";
 import { HealthThreadLogo, BrandAccentBar } from "@/components/HealthThreadLogo";
+import { triggerPwaInstall } from "@/components/PwaInstallPrompt";
 import DashboardTab from "./tabs/DashboardTab";
 import TimelineTab from "./tabs/TimelineTab";
 import EmergencyProfileTab from "./tabs/EmergencyProfileTab";
@@ -284,6 +286,18 @@ export default function DashboardPage() {
               <h2 className="text-base sm:text-lg font-extrabold text-slate-900 tracking-tight">
                 {getPageTitle()}
               </h2>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => triggerPwaInstall()}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-800 text-xs font-bold transition-all active:scale-95 shadow-2xs cursor-pointer"
+                title="Install HealthThread PWA on your device"
+              >
+                <Download className="w-3.5 h-3.5 text-teal-600" />
+                <span className="hidden sm:inline">Install PWA</span>
+              </button>
             </div>
           </header>
 

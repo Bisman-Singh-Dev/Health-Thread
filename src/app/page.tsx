@@ -19,7 +19,8 @@ import {
   Bot,
   ExternalLink,
   Zap,
-  Play
+  Play,
+  Download
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -30,6 +31,7 @@ import StrokeText from "@/components/StrokeText";
 import LumiBeaconFace from "@/components/LumiBeaconFace";
 import { getActiveUser, VaultUser } from "@/lib/vaultStore";
 import { useRouter } from "next/navigation";
+import { triggerPwaInstall } from "@/components/PwaInstallPrompt";
 
 const carouselItems: FlexCarouselItem[] = [
   { src: '/images/one.jpg', alt: 'A chrome sculpture', title: 'Iridescence' },
@@ -98,6 +100,15 @@ export default function LandingPage() {
           </nav>
 
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => triggerPwaInstall()}
+              className="hidden sm:inline-flex items-center gap-1.5 text-xs sm:text-sm font-bold text-teal-700 hover:text-teal-900 px-3 py-2 rounded-xl border border-teal-200 bg-teal-50/70 hover:bg-teal-100 transition-colors cursor-pointer"
+              title="Install HealthThread PWA App"
+            >
+              <Download className="w-4 h-4 text-teal-600" />
+              <span>Install App</span>
+            </button>
             <Link
               href="/login"
               className="text-xs sm:text-sm font-bold text-slate-700 hover:text-slate-900 px-3.5 py-2 rounded-xl hover:bg-slate-100 transition-colors"

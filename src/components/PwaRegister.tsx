@@ -10,10 +10,10 @@ export default function PwaRegister() {
         navigator.serviceWorker
           .register("/sw.js")
           .then((registration) => {
-            console.log("[VitalLens PWA] Service Worker registered with scope:", registration.scope);
+            console.log("[HealthThread PWA] Service Worker registered with scope:", registration.scope);
           })
           .catch((error) => {
-            console.warn("[VitalLens PWA] Service Worker registration failed:", error);
+            console.warn("[HealthThread PWA] Service Worker registration failed:", error);
           });
       });
     }
