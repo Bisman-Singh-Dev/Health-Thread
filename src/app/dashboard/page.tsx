@@ -166,16 +166,16 @@ export default function DashboardPage() {
               <span>1. Dashboard</span>
             </button>
 
-            {/* TAB 2: LIFELONG TIMELINE */}
+            {/* TAB 2: LIFELONG TIMELINE - PURPLE */}
             <button
               onClick={() => { setActiveTab("timeline"); setViewMode("tabs"); setMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
                 activeTab === "timeline" && viewMode === "tabs"
-                  ? "bg-gradient-to-r from-[#00b4d8] to-[#0077b6] text-white shadow-md font-bold"
+                  ? "bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 text-white shadow-md font-bold"
                   : "text-slate-300 hover:bg-slate-800 hover:text-white"
               }`}
             >
-              <History className="w-4 h-4 text-sky-300" />
+              <History className="w-4 h-4 text-purple-300" />
               <span>2. Lifelong Timeline</span>
             </button>
 
@@ -199,29 +199,29 @@ export default function DashboardPage() {
               </span>
             </div>
 
-            {/* TAB 4: BEACON */}
+            {/* TAB 4: BEACON - YELLOW */}
             <button
               onClick={() => { setActiveTab("beacon"); setViewMode("tabs"); setMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
                 activeTab === "beacon" && viewMode === "tabs"
-                  ? "bg-gradient-to-r from-teal-500 to-[#00a896] text-white shadow-md font-bold"
+                  ? "bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500 text-slate-950 shadow-md font-extrabold"
                   : "text-slate-300 hover:bg-slate-800 hover:text-white"
               }`}
             >
-              <Bot className="w-4 h-4 text-cyan-300" />
+              <Bot className={`w-4 h-4 ${activeTab === "beacon" && viewMode === "tabs" ? "text-slate-950" : "text-yellow-400"}`} />
               <span>4. Beacon (Lumi Hardware)</span>
             </button>
 
-            {/* TAB 5: MEDICINE REMINDER */}
+            {/* TAB 5: MEDICINE REMINDER - ORANGE GRADIENT */}
             <button
               onClick={() => { setActiveTab("reminders"); setViewMode("tabs"); setMobileMenuOpen(false); }}
               className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl transition-all ${
                 activeTab === "reminders" && viewMode === "tabs"
-                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md font-bold"
+                  ? "bg-gradient-to-r from-orange-500 via-amber-500 to-orange-600 text-white shadow-md font-bold"
                   : "text-slate-300 hover:bg-slate-800 hover:text-white"
               }`}
             >
-              <AlarmClock className="w-4 h-4 text-amber-400" />
+              <AlarmClock className="w-4 h-4 text-orange-300" />
               <span>5. Medicine Reminder</span>
             </button>
           </nav>
@@ -343,14 +343,14 @@ export default function DashboardPage() {
                   {/* CARD 2: LIFELONG TIMELINE */}
                   <div 
                     onClick={() => { setActiveTab("timeline"); setViewMode("tabs"); }}
-                    className="p-6 rounded-3xl bg-white border border-slate-200 hover:border-sky-400 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+                    className="p-6 rounded-3xl bg-white border border-slate-200 hover:border-purple-400 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
                   >
                     <div>
-                      <div className="w-10 h-10 rounded-2xl bg-sky-50 text-[#028090] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                      <div className="w-10 h-10 rounded-2xl bg-purple-50 text-purple-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
                         <History className="w-5 h-5" />
                       </div>
-                      <span className="text-[10px] font-bold text-sky-600 uppercase tracking-wider">Tab 2</span>
-                      <h4 className="text-lg font-extrabold text-slate-900 mt-0.5 group-hover:text-[#028090] transition-colors">
+                      <span className="text-[10px] font-bold text-purple-600 uppercase tracking-wider">Tab 2</span>
+                      <h4 className="text-lg font-extrabold text-slate-900 mt-0.5 group-hover:text-purple-600 transition-colors">
                         Lifelong Medical Timeline
                       </h4>
                       <p className="text-xs text-slate-500 mt-2 leading-relaxed">
@@ -358,7 +358,7 @@ export default function DashboardPage() {
                       </p>
                     </div>
 
-                    <div className="pt-5 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-[#028090]">
+                    <div className="pt-5 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-purple-600">
                       <span>Open Timeline</span>
                       <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </div>
@@ -391,14 +391,14 @@ export default function DashboardPage() {
                   {/* CARD 4: BEACON (LUMI HARDWARE) */}
                   <div 
                     onClick={() => { setActiveTab("beacon"); setViewMode("tabs"); }}
-                    className="p-6 rounded-3xl bg-white border border-slate-200 hover:border-teal-400 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between md:col-span-2 lg:col-span-2"
+                    className="p-6 rounded-3xl bg-white border border-slate-200 hover:border-yellow-400 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between md:col-span-2 lg:col-span-2"
                   >
                     <div>
-                      <div className="w-10 h-10 rounded-2xl bg-teal-50 text-[#00a896] flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                      <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-500 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
                         <Bot className="w-5 h-5" />
                       </div>
-                      <span className="text-[10px] font-bold text-teal-600 uppercase tracking-wider">Tab 4 (Hardware Subhead)</span>
-                      <h4 className="text-lg font-extrabold text-slate-900 mt-0.5 group-hover:text-[#00a896] transition-colors">
+                      <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wider">Tab 4 (Hardware Subhead)</span>
+                      <h4 className="text-lg font-extrabold text-slate-900 mt-0.5 group-hover:text-amber-500 transition-colors">
                         Beacon (Lumi Hardware powered by Groq & Deepgram)
                       </h4>
                       <p className="text-xs text-slate-500 mt-2 leading-relaxed">
@@ -406,7 +406,7 @@ export default function DashboardPage() {
                       </p>
                     </div>
 
-                    <div className="pt-5 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-[#00a896]">
+                    <div className="pt-5 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-amber-500">
                       <span>Launch Beacon Hardware</span>
                       <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </div>
@@ -415,14 +415,14 @@ export default function DashboardPage() {
                   {/* CARD 5: MEDICINE REMINDER */}
                   <div 
                     onClick={() => { setActiveTab("reminders"); setViewMode("tabs"); }}
-                    className="p-6 rounded-3xl bg-white border border-slate-200 hover:border-amber-400 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
+                    className="p-6 rounded-3xl bg-white border border-slate-200 hover:border-orange-400 shadow-xs hover:shadow-md transition-all cursor-pointer group flex flex-col justify-between"
                   >
                     <div>
-                      <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
+                      <div className="w-10 h-10 rounded-2xl bg-orange-50 text-orange-500 flex items-center justify-center mb-4 group-hover:scale-105 transition-transform">
                         <AlarmClock className="w-5 h-5" />
                       </div>
-                      <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider">Tab 5</span>
-                      <h4 className="text-lg font-extrabold text-slate-900 mt-0.5 group-hover:text-amber-600 transition-colors">
+                      <span className="text-[10px] font-bold text-orange-500 uppercase tracking-wider">Tab 5</span>
+                      <h4 className="text-lg font-extrabold text-slate-900 mt-0.5 group-hover:text-orange-500 transition-colors">
                         Medicine Reminder Alarms
                       </h4>
                       <p className="text-xs text-slate-500 mt-2 leading-relaxed">
@@ -430,7 +430,7 @@ export default function DashboardPage() {
                       </p>
                     </div>
 
-                    <div className="pt-5 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-amber-600">
+                    <div className="pt-5 mt-4 border-t border-slate-100 flex items-center justify-between text-xs font-bold text-orange-500">
                       <span>Open Alarms</span>
                       <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </div>
