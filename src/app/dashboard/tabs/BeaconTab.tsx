@@ -734,13 +734,48 @@ export default function BeaconTab({
       const data = await res.json();
       const content: string = data.content || "";
 
-      // Check for Emergency Redirect
+      // Check for Emergency Redirect or Emergency Lumi Mode
       if (cameraMode === "emergency" || content.includes("EMERGENCY_REDIRECT:")) {
         setShowEmergencyVideo(true);
+        setStatusMessage("Emergency acute trauma detected. Showing first-aid video guide...");
+        setLumiState("emergency");
+
+        const u = getActiveUser();
+        await saveDailyLumiDiagnosis({
+          condition: "Acute Laceration / Cut",
+          treatmentSteps: [
+            "Step 1: Apply immediate firm, direct pressure with clean cloth.",
+            "Step 2: Follow emergency video guide on screen.",
+            "Step 3: Dial emergency services if bleeding does not stop in 5 minutes."
+          ],
+          specialist: "Emergency Medicine / Trauma Surgeon",
+          emergencyContact: "Dial 911 or 112",
+          imageUrl: imageDataUrl
+        }, u?.id);
+
+        setLatestDiagnosis({
+          condition: "Acute Laceration / Cut",
+          steps: [
+            "Apply direct firm pressure with clean gauze/cloth.",
+            "Follow emergency first-aid video guide.",
+            "Call emergency services if bleeding persists."
+          ],
+          specialist: "Emergency Trauma Specialist",
+          emergencyContact: "911 / 112",
+          photoUrl: imageDataUrl
+        });
+
+        const emergencySpoken = "That appears to be a cut.";
+        setTimeout(() => {
+          speakWithLumi(emergencySpoken, () => {
+            setLumiState("emergency");
+          });
+        }, 400);
+        return;
       }
 
       const conditionMatch = content.match(/Condition:\s*([^\n]+)/i);
-      const conditionName = conditionMatch ? conditionMatch[1].trim() : (cameraMode === "emergency" ? "Acute Skin Laceration / Trauma" : "Dermal Inflammation");
+      const conditionName = conditionMatch ? conditionMatch[1].trim() : "Dermal Inflammation";
 
       const steps: string[] = [];
       const step1 = content.match(/Step 1:\s*([^\n]+)/i);
