@@ -3,7 +3,7 @@
 import React from "react";
 
 export function HealthThreadLogo({ 
-  className = "h-8 sm:h-9", 
+  className = "h-11 sm:h-12", 
   showText = true, 
   subtitle,
   isDark = false
@@ -14,13 +14,13 @@ export function HealthThreadLogo({
   isDark?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-2.5 select-none">
+    <div className="flex items-center gap-3 select-none">
       {/* High-Resolution Brand Logo from User Asset */}
       <div className={`relative ${className} shrink-0 flex items-center`}>
         <img 
           src="/images/health-thread-logo.png" 
           alt="HealthThread Logo" 
-          className="h-full w-auto object-contain drop-shadow-xs"
+          className="h-full w-auto object-contain drop-shadow-sm transition-transform duration-200 hover:scale-105"
         />
       </div>
 
