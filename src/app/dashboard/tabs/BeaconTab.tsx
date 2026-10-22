@@ -120,8 +120,13 @@ export default function BeaconTab({
     initGesture();
   }, []);
 
-  // Interruption (Barge-in): Immediately silence Lumi if user speaks or clicks
+  const shouldStopSpeechRef = useRef<boolean>(false);
+
+  // Interruption (Barge-in / Manual Stop): Immediately silence Lumi completely
   const interruptLumi = () => {
+    shouldStopSpeechRef.current = true;
+
+    // 1. Stop HTMLAudioElement (Deepgram audio)
     if (audioPlayerRef.current) {
       try { 
         audioPlayerRef.current.pause(); 
@@ -130,17 +135,22 @@ export default function BeaconTab({
       } catch(e) {}
       audioPlayerRef.current = null;
     }
+
+    // 2. Stop browser speech synthesis completely
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       try { window.speechSynthesis.cancel(); } catch(e) {}
     }
+
     setIsSpeaking(false);
     isSpeakingRef.current = false;
-    setLumiState("listening");
-    setStatusMessage("Speech stopped. Listening to you...");
+    setLumiState("awake");
+    setStatusMessage("Speech stopped.");
   };
 
   // Deepgram TTS Speech Output (Aura-Asteria female voice, clean without asterisks)
   const speakWithLumi = async (text: string, onEnd?: () => void) => {
+    shouldStopSpeechRef.current = false;
+
     // Stop any previously playing speech
     if (audioPlayerRef.current) {
       try { 
@@ -174,6 +184,14 @@ export default function BeaconTab({
     setLastSpokenReply(cleanSpoken);
 
     const fallbackToBrowserSpeech = () => {
+      // If user clicked Stop Speaking, DO NOT start fallback speech!
+      if (shouldStopSpeechRef.current) {
+        setIsSpeaking(false);
+        isSpeakingRef.current = false;
+        setLumiState("awake");
+        return;
+      }
+
       if (typeof window !== "undefined" && "speechSynthesis" in window) {
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(cleanSpoken);
@@ -207,6 +225,14 @@ export default function BeaconTab({
         body: JSON.stringify({ text: cleanSpoken })
       });
 
+      // If user clicked Stop Speaking while waiting for fetch
+      if (shouldStopSpeechRef.current) {
+        setIsSpeaking(false);
+        isSpeakingRef.current = false;
+        setLumiState("awake");
+        return;
+      }
+
       if (res.ok) {
         const blob = await res.blob();
         if (blob.size < 100) {
@@ -229,17 +255,24 @@ export default function BeaconTab({
         audio.onerror = () => {
           URL.revokeObjectURL(url);
           audioPlayerRef.current = null;
-          fallbackToBrowserSpeech();
+          // Only fallback if not explicitly stopped by user
+          if (!shouldStopSpeechRef.current) {
+            fallbackToBrowserSpeech();
+          }
         };
 
-        await audio.play();
+        if (!shouldStopSpeechRef.current) {
+          await audio.play();
+        }
         return;
       } else {
         fallbackToBrowserSpeech();
       }
     } catch (e) {
       console.warn("Lumi TTS audio error:", e);
-      fallbackToBrowserSpeech();
+      if (!shouldStopSpeechRef.current) {
+        fallbackToBrowserSpeech();
+      }
     }
   };
 
@@ -654,11 +687,12 @@ export default function BeaconTab({
     const dataUrl = canvas.toDataURL("image/jpeg", 0.65);
     setCapturedImage(dataUrl);
 
-    // Stop camera video stream
+    // Stop camera video stream and close camera modal immediately so user sees Lumi and diagnosis!
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(t => t.stop());
       streamRef.current = null;
     }
+    setIsCameraActive(false);
 
     // Process photo with Groq
     processSnapshotDiagnosis(dataUrl);
@@ -827,10 +861,10 @@ export default function BeaconTab({
       </div>
 
       {/* 2. CENTER: THE PHOTOREALISTIC ROBOT FACE WITH HUGE EYES */}
-      <div className="flex-1 flex flex-col items-center justify-center my-4 w-full">
+      <div className="flex-1 flex flex-col items-center justify-center my-2 sm:my-4 w-full overflow-hidden">
         <LumiBeaconFace
           state={lumiState}
-          size="xl"
+          size="lg"
           statusText={statusMessage}
           onClick={() => {
             if (isSpeaking) {
@@ -880,21 +914,21 @@ export default function BeaconTab({
       </div>
 
 
-      {/* 4. DIAGNOSIS POPUP DRAWER */}
+      {/* 4. DIAGNOSIS POPUP DRAWER (Positioned in left portion so Lumi robot face remains completely visible) */}
       <AnimatePresence>
         {latestDiagnosis && (
           <motion.div 
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-4 left-4 right-4 max-w-3xl mx-auto z-40 bg-white/95 backdrop-blur-xl rounded-3xl p-6 border border-cyan-200 shadow-2xl"
+            initial={{ opacity: 0, y: 40, x: -20 }}
+            animate={{ opacity: 1, y: 0, x: 0 }}
+            exit={{ opacity: 0, y: 40, x: -20 }}
+            className="fixed bottom-6 left-4 sm:left-8 z-40 max-w-xl w-[calc(100vw-2rem)] sm:w-[480px] md:w-[520px] bg-white/95 backdrop-blur-xl rounded-3xl p-5 sm:p-6 border border-cyan-200 shadow-2xl"
           >
             <div className="flex items-start justify-between pb-3 border-b border-slate-100">
               <div>
                 <span className="text-[10px] font-extrabold uppercase tracking-widest text-[#0077b6] bg-cyan-100 px-2.5 py-0.5 rounded-full">
                   Lumi Groq Diagnosis
                 </span>
-                <h3 className="text-lg sm:text-xl font-extrabold text-slate-900 mt-1">
+                <h3 className="text-base sm:text-lg font-extrabold text-slate-900 mt-1">
                   {latestDiagnosis.condition}
                 </h3>
               </div>
